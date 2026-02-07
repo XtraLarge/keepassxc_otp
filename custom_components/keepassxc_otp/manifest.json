@@ -1,0 +1,14 @@
+{
+  "domain": "keepassxc_otp",
+  "name": "KeePassXC OTP",
+  "version": "1.0.0",
+  "documentation": "https://github.com/XtraLarge/keepassxc_otp",
+  "issue_tracker": "https://github.com/XtraLarge/keepassxc_otp/issues",
+  "requirements": [
+    "pykeepass>=4.0.0",
+    "pyotp>=2.8.0"
+  ],
+  "codeowners": [],
+  "config_flow": true,
+  "iot_class": "local_polling"
+}

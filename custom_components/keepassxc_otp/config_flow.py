@@ -175,7 +175,9 @@ async def validate_input(hass: HomeAssistant, data: dict[str, Any]) -> dict[str,
 
     try:
         # Save database to temporary file with restricted permissions
-        with tempfile.NamedTemporaryFile(delete=False, suffix=".kdbx", mode='wb') as db_temp:
+        with tempfile.NamedTemporaryFile(
+            mode='wb', delete=False, suffix=".kdbx"
+        ) as db_temp:
             db_temp.write(db_content)
             db_temp_path = db_temp.name
         # Set file permissions to owner read/write only (0o600)
@@ -183,7 +185,9 @@ async def validate_input(hass: HomeAssistant, data: dict[str, Any]) -> dict[str,
 
         # Save keyfile to temporary file if provided with restricted permissions
         if keyfile_content:
-            with tempfile.NamedTemporaryFile(delete=False, mode='wb') as kf_temp:
+            with tempfile.NamedTemporaryFile(
+                mode='wb', delete=False
+            ) as kf_temp:
                 kf_temp.write(keyfile_content)
                 kf_temp_path = kf_temp.name
             # Set file permissions to owner read/write only (0o600)

@@ -4,9 +4,10 @@ from datetime import timedelta
 DOMAIN = "keepassxc_otp"
 
 # Configuration keys
-CONF_DATABASE_PATH = "database_path"
+CONF_DATABASE_FILE = "database_file"
 CONF_PASSWORD = "password"
-CONF_KEYFILE = "keyfile"
+CONF_KEYFILE_FILE = "keyfile_file"
+CONF_OTP_SECRETS = "otp_secrets"
 
 # Update interval
 UPDATE_INTERVAL = timedelta(seconds=10)

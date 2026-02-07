@@ -83,9 +83,12 @@ class KeePassXCOTPCoordinator(DataUpdateCoordinator):
         for entry in kp.entries:
             otp_data = self._extract_otp_from_entry(entry)
             if otp_data:
-                entry_id = slugify(entry.title)
-                otp_entries[entry_id] = otp_data
-                _LOGGER.debug("Found OTP entry: %s", entry.title)
+                # Use UUID to ensure uniqueness, but also store slugified title for entity_id
+                entry_uuid = str(entry.uuid)
+                otp_data["entry_uuid"] = entry_uuid
+                otp_data["entity_id_suffix"] = slugify(entry.title)
+                otp_entries[entry_uuid] = otp_data
+                _LOGGER.debug("Found OTP entry: %s (UUID: %s)", entry.title, entry_uuid)
 
         _LOGGER.info("Found %d OTP entries in KeePassXC database", len(otp_entries))
         return otp_entries
@@ -186,8 +189,8 @@ async def async_setup_entry(
 
     # Create sensors for each OTP entry
     sensors = []
-    for entry_id, otp_data in coordinator.data.items():
-        sensors.append(KeePassXCOTPSensor(coordinator, entry_id, otp_data))
+    for entry_uuid, otp_data in coordinator.data.items():
+        sensors.append(KeePassXCOTPSensor(coordinator, entry_uuid, otp_data))
 
     async_add_entities(sensors)
 
@@ -198,24 +201,26 @@ class KeePassXCOTPSensor(CoordinatorEntity, SensorEntity):
     def __init__(
         self,
         coordinator: KeePassXCOTPCoordinator,
-        entry_id: str,
+        entry_uuid: str,
         otp_data: dict[str, Any],
     ) -> None:
         """Initialize the sensor."""
         super().__init__(coordinator)
-        self._entry_id = entry_id
+        self._entry_uuid = entry_uuid
         self._otp_data = otp_data
-        self._attr_unique_id = f"{DOMAIN}_{entry_id}"
+        # Use UUID for unique_id to ensure uniqueness
+        self._attr_unique_id = f"{DOMAIN}_{entry_uuid}"
         self._attr_name = otp_data["entry_name"]
         self._attr_icon = "mdi:key-chain"
-        # Set suggested entity_id for predictable entity naming
-        self.entity_id = f"sensor.{DOMAIN}_{self._entry_id}"
+        # Use slugified title for readable entity_id
+        entity_id_suffix = otp_data.get("entity_id_suffix", slugify(otp_data["entry_name"]))
+        self.entity_id = f"sensor.{DOMAIN}_{entity_id_suffix}"
 
     @property
     def native_value(self) -> str:
         """Return the current TOTP code."""
         try:
-            otp_data = self.coordinator.data.get(self._entry_id)
+            otp_data = self.coordinator.data.get(self._entry_uuid)
             if not otp_data:
                 return None
             
@@ -226,8 +231,9 @@ class KeePassXCOTPSensor(CoordinatorEntity, SensorEntity):
             totp = pyotp.TOTP(secret, digits=digits, interval=period)
             code = totp.now()
             
-            # Zero-pad the code to the correct number of digits
-            return code.zfill(digits)
+            # pyotp returns a string, but ensure it's zero-padded
+            # In case pyotp behavior changes or returns integer
+            return str(code).zfill(digits)
         except Exception as err:
             _LOGGER.error("Error generating TOTP code for %s: %s", self._attr_name, err)
             return None
@@ -235,7 +241,7 @@ class KeePassXCOTPSensor(CoordinatorEntity, SensorEntity):
     @property
     def extra_state_attributes(self) -> dict[str, Any]:
         """Return additional attributes."""
-        otp_data = self.coordinator.data.get(self._entry_id)
+        otp_data = self.coordinator.data.get(self._entry_uuid)
         if not otp_data:
             return {}
         

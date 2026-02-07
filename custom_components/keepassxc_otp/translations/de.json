@@ -3,19 +3,18 @@
     "step": {
       "user": {
         "title": "KeePassXC OTP Konfiguration",
-        "description": "Konfigurieren Sie den Zugriff auf Ihre KeePassXC Datenbank",
+        "description": "Laden Sie Ihre KeePassXC-Datenbankdatei hoch und geben Sie die Zugangsdaten ein",
         "data": {
-          "database_path": "Datenbankpfad",
+          "database_file": "Datenbankdatei (.kdbx)",
           "password": "Master-Passwort",
-          "keyfile": "Schlüsseldatei-Pfad (optional)"
+          "keyfile_file": "Schlüsseldatei (optional)"
         }
       }
     },
     "error": {
-      "database_not_found": "Datenbankdatei nicht gefunden",
-      "keyfile_not_found": "Schlüsseldatei nicht gefunden",
       "invalid_auth": "Ungültiges Passwort oder Schlüsseldatei",
       "cannot_connect": "Datenbank kann nicht geöffnet werden",
+      "no_otp_entries": "Keine OTP-Einträge in der Datenbank gefunden",
       "unknown": "Unbekannter Fehler aufgetreten"
     },
     "abort": {

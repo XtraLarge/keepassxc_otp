@@ -1,0 +1,7 @@
+{
+  "name": "KeePassXC OTP",
+  "hacs": "1.0.0",
+  "domains": ["keepassxc_otp"],
+  "iot_class": "Local Polling",
+  "homeassistant": "2023.1.0"
+}

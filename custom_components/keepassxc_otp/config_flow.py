@@ -36,6 +36,30 @@ def _read_uploaded_file(hass: HomeAssistant, file_id: str) -> bytes:
         return file.read()
 
 
+def _secure_delete_file(file_path: str) -> None:
+    """Securely delete a file by overwriting it before deletion."""
+    try:
+        # Get file size
+        file_size = os.path.getsize(file_path)
+        
+        # Overwrite with random data
+        with open(file_path, "wb") as f:
+            f.write(os.urandom(file_size))
+            f.flush()
+            os.fsync(f.fileno())
+        
+        # Delete the file
+        os.unlink(file_path)
+    except Exception as err:
+        _LOGGER.error("Error during secure file deletion: %s", err)
+        # Try regular deletion as fallback
+        try:
+            if os.path.exists(file_path):
+                os.unlink(file_path)
+        except Exception:
+            pass
+
+
 def _extract_otp_from_entry(entry) -> dict[str, Any] | None:
     """Extract OTP data from a KeePassXC entry."""
     otp_uri = None
@@ -204,13 +228,13 @@ async def validate_input(hass: HomeAssistant, data: dict[str, Any]) -> dict[str,
             raise ValueError("no_otp_entries")
 
     finally:
-        # CRITICAL: Delete temporary files
+        # CRITICAL: Securely delete temporary files
         if db_temp_path and os.path.exists(db_temp_path):
-            os.unlink(db_temp_path)
-            _LOGGER.debug("Deleted temporary database file")
+            _secure_delete_file(db_temp_path)
+            _LOGGER.debug("Securely deleted temporary database file")
         if kf_temp_path and os.path.exists(kf_temp_path):
-            os.unlink(kf_temp_path)
-            _LOGGER.debug("Deleted temporary keyfile")
+            _secure_delete_file(kf_temp_path)
+            _LOGGER.debug("Securely deleted temporary keyfile")
 
     # Return info that you want to store in the config entry
     # Note: Password is NOT stored for security reasons

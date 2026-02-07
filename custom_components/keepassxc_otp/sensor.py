@@ -135,11 +135,19 @@ class KeePassXCOTPSensor(CoordinatorEntity, SensorEntity):
         otp_data = coordinator.data.get(entry_uuid, {})
         # Use UUID for unique_id to ensure uniqueness
         self._attr_unique_id = f"{DOMAIN}_{entry_uuid}"
-        self._attr_name = otp_data.get("name", entry_uuid)
+        # Use a user-friendly fallback if name is missing
+        self._attr_name = otp_data.get("name") or "Unknown OTP Entry"
         self._attr_icon = "mdi:key-chain"
         # Use slugified title for readable entity_id
         entity_id_suffix = otp_data.get("entity_id_suffix", slugify(self._attr_name))
         self.entity_id = f"sensor.{DOMAIN}_{entity_id_suffix}"
+        
+        # Log warning if OTP data is missing
+        if not otp_data:
+            _LOGGER.warning(
+                "OTP data missing for entry UUID %s during sensor initialization",
+                entry_uuid,
+            )
 
     @property
     def native_value(self) -> str | None:

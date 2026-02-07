@@ -1,6 +1,7 @@
 """Sensor platform for KeePassXC OTP integration."""
 from __future__ import annotations
 
+import hashlib
 import logging
 import time
 from typing import Any
@@ -58,14 +59,22 @@ class KeePassXCOTPCoordinator(DataUpdateCoordinator):
 
         for entry_uuid, secret_data in self.otp_secrets.items():
             try:
-                # Get algorithm and convert to lowercase for pyotp
-                algorithm = secret_data.get("algorithm", "SHA1").lower()
+                # Get algorithm and convert to hashlib digest function
+                algorithm_name = secret_data.get("algorithm", "SHA1").lower()
+                
+                # Map algorithm name to hashlib function
+                digest_map = {
+                    "sha1": hashlib.sha1,
+                    "sha256": hashlib.sha256,
+                    "sha512": hashlib.sha512,
+                }
+                digest = digest_map.get(algorithm_name, hashlib.sha1)
                 
                 totp = pyotp.TOTP(
                     secret_data["secret"],
                     digits=secret_data.get("digits", 6),
                     interval=secret_data.get("period", 30),
-                    digest=algorithm,
+                    digest=digest,
                 )
 
                 current_code = totp.now()

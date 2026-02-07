@@ -150,16 +150,20 @@ async def validate_input(hass: HomeAssistant, data: dict[str, Any]) -> dict[str,
     kf_temp_path = None
 
     try:
-        # Save database to temporary file
-        with tempfile.NamedTemporaryFile(delete=False, suffix=".kdbx") as db_temp:
+        # Save database to temporary file with restricted permissions
+        with tempfile.NamedTemporaryFile(delete=False, suffix=".kdbx", mode='wb') as db_temp:
             db_temp.write(db_content)
             db_temp_path = db_temp.name
+        # Set file permissions to owner read/write only (0o600)
+        os.chmod(db_temp_path, 0o600)
 
-        # Save keyfile to temporary file if provided
+        # Save keyfile to temporary file if provided with restricted permissions
         if keyfile_content:
-            with tempfile.NamedTemporaryFile(delete=False) as kf_temp:
+            with tempfile.NamedTemporaryFile(delete=False, mode='wb') as kf_temp:
                 kf_temp.write(keyfile_content)
                 kf_temp_path = kf_temp.name
+            # Set file permissions to owner read/write only (0o600)
+            os.chmod(kf_temp_path, 0o600)
 
         # Try to open the database and extract OTP secrets
         try:
@@ -209,10 +213,10 @@ async def validate_input(hass: HomeAssistant, data: dict[str, Any]) -> dict[str,
             _LOGGER.debug("Deleted temporary keyfile")
 
     # Return info that you want to store in the config entry
+    # Note: Password is NOT stored for security reasons
     return {
         "title": "KeePassXC OTP",
         CONF_OTP_SECRETS: otp_secrets,
-        CONF_PASSWORD: password,  # Keep password for potential re-sync
     }
 
 
@@ -244,12 +248,11 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                 _LOGGER.exception("Unexpected exception")
                 errors["base"] = "unknown"
             else:
-                # Store OTP secrets and password in config entry
+                # Store only OTP secrets in config entry (no password)
                 return self.async_create_entry(
                     title=info["title"],
                     data={
                         CONF_OTP_SECRETS: info[CONF_OTP_SECRETS],
-                        CONF_PASSWORD: info[CONF_PASSWORD],
                     },
                 )
 

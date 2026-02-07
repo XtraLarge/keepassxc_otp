@@ -208,11 +208,8 @@ class KeePassXCOTPSensor(CoordinatorEntity, SensorEntity):
         self._attr_unique_id = f"{DOMAIN}_{entry_id}"
         self._attr_name = otp_data["entry_name"]
         self._attr_icon = "mdi:key-chain"
-
-    @property
-    def entity_id(self) -> str:
-        """Return the entity ID."""
-        return f"sensor.{DOMAIN}_{self._entry_id}"
+        # Set suggested entity_id for predictable entity naming
+        self.entity_id = f"sensor.{DOMAIN}_{self._entry_id}"
 
     @property
     def native_value(self) -> str:

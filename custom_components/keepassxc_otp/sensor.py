@@ -58,10 +58,9 @@ class KeePassXCOTPCoordinator(DataUpdateCoordinator):
 
         for entry_uuid, secret_data in self.otp_secrets.items():
             try:
-                # Get algorithm, convert to lowercase and handle it properly
-                algorithm = secret_data.get("algorithm", "SHA1")
-                # pyotp expects the digest parameter as a hashlib digest
-                # For TOTP, it uses the algorithm parameter
+                # Get algorithm and convert to lowercase for pyotp
+                algorithm = secret_data.get("algorithm", "SHA1").lower()
+                
                 totp = pyotp.TOTP(
                     secret_data["secret"],
                     digits=secret_data.get("digits", 6),

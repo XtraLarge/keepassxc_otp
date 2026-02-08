@@ -18,7 +18,7 @@ PLATFORMS: list[Platform] = [Platform.SENSOR]
 
 async def async_setup(hass: HomeAssistant, config: dict) -> bool:
     """Set up the KeePassXC OTP component."""
-    # Create directory for file placement
+    # Create base directory for file placement
     storage_dir = hass.config.path("keepassxc_otp")
 
     def _ensure_directory(path: str) -> None:
@@ -54,10 +54,18 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     # Register services
     await async_setup_services(hass)
     
-    _LOGGER.info(
-        "Set up KeePassXC OTP integration with %d OTP secrets",
-        len(entry.data.get(CONF_OTP_SECRETS, {}))
-    )
+    user_id = entry.data.get("user_id")
+    if user_id:
+        _LOGGER.info(
+            "Set up KeePassXC OTP for user %s with %d OTP secrets",
+            user_id,
+            len(entry.data.get(CONF_OTP_SECRETS, {}))
+        )
+    else:
+        _LOGGER.info(
+            "Set up KeePassXC OTP integration with %d OTP secrets",
+            len(entry.data.get(CONF_OTP_SECRETS, {}))
+        )
     
     return True
 
@@ -119,6 +127,21 @@ async def async_setup_services(hass: HomeAssistant) -> None:
             return
         
         token = state.state
+        user_id_from_entity = state.attributes.get("user_id")
+        
+        # Verify user has permission (if entity has user_id)
+        if user_id_from_entity and call.context.user_id:
+            if call.context.user_id != user_id_from_entity:
+                # Check if user is admin
+                user = await hass.auth.async_get_user(call.context.user_id)
+                if not user or not user.is_admin:
+                    _LOGGER.warning(
+                        "User %s attempted to copy token from entity owned by %s",
+                        call.context.user_id,
+                        user_id_from_entity
+                    )
+                    # Still allow for now but log the attempt
+                    # In strict mode, we could raise an exception here
         
         # Fire event that frontend can listen to for clipboard copy
         hass.bus.async_fire(
@@ -142,7 +165,7 @@ async def async_setup_services(hass: HomeAssistant) -> None:
             blocking=False,
         )
         
-        _LOGGER.debug("Copy token service called for %s", entity_id)
+        _LOGGER.debug("Copy token service called for %s by user %s", entity_id, call.context.user_id)
     
     async def handle_get_all_entities(call: ServiceCall) -> dict:
         """Handle the get_all_entities service call."""

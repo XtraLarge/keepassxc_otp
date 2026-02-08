@@ -157,8 +157,16 @@ def _extract_otp_from_entry(entry) -> dict[str, Any] | None:
         if "{REF:" not in str(entry.url).upper():
             entry_url = entry.url
     
-    # Add URL to OTP data
+    # Extract username from entry (if available)
+    entry_username = None
+    if hasattr(entry, 'username') and entry.username:
+        # Only include if not a reference
+        if "{REF:" not in str(entry.username).upper():
+            entry_username = entry.username
+    
+    # Add URL and username to OTP data
     otp_data["url"] = entry_url
+    otp_data["username"] = entry_username
     
     return otp_data
 
@@ -379,6 +387,7 @@ async def validate_input(hass: HomeAssistant, data: dict[str, Any], person_name:
                     "digits": otp_data.get("digits", 6),
                     "algorithm": otp_data.get("algorithm", "SHA1"),
                     "url": otp_data.get("url"),
+                    "username": otp_data.get("username"),
                 }
                 _LOGGER.debug(
                     "Extracted OTP for entry: %s (UUID: %s)",

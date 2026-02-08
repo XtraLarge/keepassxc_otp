@@ -1,6 +1,7 @@
 """Config flow for KeePassXC OTP integration."""
 from __future__ import annotations
 
+import hashlib
 import logging
 import os
 import tempfile
@@ -294,22 +295,25 @@ async def validate_input(hass: HomeAssistant, data: dict[str, Any]) -> dict[str,
 
         # Extract all OTP secrets from all entries
         otp_secrets = {}
-        seen_secrets = set()  # Track secrets to avoid duplicates
+        seen_secret_hashes = set()  # Track secret hashes to avoid duplicates
         
         for entry in kp.entries:
             otp_data = _extract_otp_from_entry(entry)
             if otp_data:
                 secret = otp_data["secret"]
                 
+                # Hash the secret for deduplication to minimize exposure of actual secret
+                secret_hash = hashlib.sha256(secret.encode()).hexdigest()
+                
                 # Skip if we've already seen this exact secret
-                if secret in seen_secrets:
+                if secret_hash in seen_secret_hashes:
                     _LOGGER.debug(
                         "Skipping duplicate OTP secret in entry '%s' - already extracted",
                         entry.title
                     )
                     continue
                 
-                seen_secrets.add(secret)
+                seen_secret_hashes.add(secret_hash)
                 entry_uuid = str(entry.uuid)
                 
                 otp_secrets[entry_uuid] = {
@@ -328,7 +332,8 @@ async def validate_input(hass: HomeAssistant, data: dict[str, Any]) -> dict[str,
                 )
 
         _LOGGER.info(
-            "Extracted %d unique OTP secrets from database (skipped duplicates)",
+            "Successfully extracted %d unique OTP secrets. "
+            "Skipped entries with references and duplicates.",
             len(otp_secrets)
         )
 
@@ -352,13 +357,6 @@ async def validate_input(hass: HomeAssistant, data: dict[str, Any]) -> dict[str,
         if keyfile_path and os.path.exists(keyfile_path):
             _secure_delete_file(keyfile_path)
             _LOGGER.info("Securely deleted original keyfile from %s", keyfile_path)
-
-    # Log final success with information about what was skipped
-    _LOGGER.info(
-        "Successfully extracted %d unique OTP secrets. "
-        "Skipped entries with references and duplicates.",
-        len(otp_secrets)
-    )
 
     # Return info that you want to store in the config entry
     # Note: Password is NOT stored for security reasons

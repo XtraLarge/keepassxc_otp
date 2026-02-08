@@ -31,22 +31,43 @@ A Home Assistant custom integration that reads OTP/TOTP entries from a KeePassXC
 8. Search for "KeePassXC OTP" and install it
 9. Restart Home Assistant
 
+**A directory will be automatically created:** `/config/keepassxc_otp/`
+
 #### Manual Installation
 
 1. Copy the `custom_components/keepassxc_otp` folder to your Home Assistant's `custom_components` directory
 2. Restart Home Assistant
 
+**A directory will be automatically created:** `/config/keepassxc_otp/`
+
 ### Configuration
 
-1. Go to **Settings** → **Devices & Services**
-2. Click **Add Integration**
-3. Search for **KeePassXC OTP**
-4. Enter your configuration:
-   - **Database Path**: Full path to your KeePassXC database file (e.g., `/config/keepass.kdbx`)
-   - **Master Password**: Your KeePassXC database password
-   - **Keyfile Path** (optional): Path to keyfile if you use one
+1. **Copy your files** to `/config/keepassxc_otp/`:
+   - Your KeePassXC database file (e.g., `database.kdbx`)
+   - Your keyfile (optional, e.g., `keyfile.key`)
 
-5. Click **Submit**
+   You can copy files via:
+   - **File Editor** add-on in Home Assistant
+   - **SSH** or **Terminal** add-on
+   - **Samba Share** add-on
+   - Any file manager with access to your Home Assistant config directory
+
+2. **Add the integration:**
+   - Go to **Settings** → **Devices & Services**
+   - Click **+ ADD INTEGRATION**
+   - Search for **KeePassXC OTP**
+
+3. **Enter configuration:**
+   - **Database filename**: `database.kdbx` (or your filename)
+   - **Master password**: Your KeePassXC password
+   - **Keyfile filename**: `keyfile.key` (optional, or your keyfile name)
+
+4. **Files are deleted after import** for security
+   - All OTP secrets are extracted and stored encrypted in Home Assistant
+   - Original files are securely deleted from `/config/keepassxc_otp/`
+   - To update: Remove integration and repeat steps 1-3
+
+⚠️ **Important:** Files in `/config/keepassxc_otp/` will be permanently deleted after successful import!
 
 The integration will:
 - Validate your credentials
@@ -200,22 +221,43 @@ Eine Home Assistant Custom Integration, die OTP/TOTP-Einträge aus einer KeePass
 8. Suchen Sie nach "KeePassXC OTP" und installieren Sie es
 9. Starten Sie Home Assistant neu
 
+**Ein Verzeichnis wird automatisch erstellt:** `/config/keepassxc_otp/`
+
 #### Manuelle Installation
 
 1. Kopieren Sie den Ordner `custom_components/keepassxc_otp` in Ihr Home Assistant `custom_components` Verzeichnis
 2. Starten Sie Home Assistant neu
 
+**Ein Verzeichnis wird automatisch erstellt:** `/config/keepassxc_otp/`
+
 ### Konfiguration
 
-1. Gehen Sie zu **Einstellungen** → **Geräte & Dienste**
-2. Klicken Sie auf **Integration hinzufügen**
-3. Suchen Sie nach **KeePassXC OTP**
-4. Geben Sie Ihre Konfiguration ein:
-   - **Datenbankpfad**: Vollständiger Pfad zu Ihrer KeePassXC-Datenbankdatei (z.B. `/config/keepass.kdbx`)
-   - **Master-Passwort**: Ihr KeePassXC-Datenbankpasswort
-   - **Schlüsseldatei-Pfad** (optional): Pfad zur Schlüsseldatei, falls Sie eine verwenden
+1. **Kopieren Sie Ihre Dateien** nach `/config/keepassxc_otp/`:
+   - Ihre KeePassXC-Datenbankdatei (z.B. `database.kdbx`)
+   - Ihre Schlüsseldatei (optional, z.B. `keyfile.key`)
 
-5. Klicken Sie auf **Senden**
+   Sie können Dateien kopieren über:
+   - **File Editor** Add-on in Home Assistant
+   - **SSH** oder **Terminal** Add-on
+   - **Samba Share** Add-on
+   - Jeden Dateimanager mit Zugriff auf Ihr Home Assistant Config-Verzeichnis
+
+2. **Fügen Sie die Integration hinzu:**
+   - Gehen Sie zu **Einstellungen** → **Geräte & Dienste**
+   - Klicken Sie auf **+ INTEGRATION HINZUFÜGEN**
+   - Suchen Sie nach **KeePassXC OTP**
+
+3. **Geben Sie die Konfiguration ein:**
+   - **Datenbank-Dateiname**: `database.kdbx` (oder Ihr Dateiname)
+   - **Master-Passwort**: Ihr KeePassXC-Passwort
+   - **Keyfile-Dateiname**: `keyfile.key` (optional, oder Ihr Keyfile-Name)
+
+4. **Dateien werden nach dem Import gelöscht** aus Sicherheitsgründen
+   - Alle OTP-Geheimnisse werden extrahiert und verschlüsselt in Home Assistant gespeichert
+   - Original-Dateien werden sicher aus `/config/keepassxc_otp/` gelöscht
+   - Zum Aktualisieren: Integration entfernen und Schritte 1-3 wiederholen
+
+⚠️ **Wichtig:** Dateien in `/config/keepassxc_otp/` werden nach erfolgreichem Import dauerhaft gelöscht!
 
 Die Integration wird:
 - Ihre Anmeldeinformationen validieren

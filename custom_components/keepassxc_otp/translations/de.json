@@ -2,20 +2,22 @@
   "config": {
     "step": {
       "user": {
-        "title": "KeePassXC OTP Konfiguration",
-        "description": "Laden Sie Ihre KeePassXC-Datenbankdatei hoch und geben Sie die Zugangsdaten ein",
+        "title": "KeePassXC OTP Einrichtung",
+        "description": "Bitte legen Sie Ihre KeePassXC-Datenbank und Keyfile hier ab:\n\n**{storage_path}/**\n\nGeben Sie dann die Dateinamen unten ein.\n\n⚠️ **Warnung:** Dateien werden nach dem Import sicher gelöscht!",
         "data": {
-          "database_file": "Datenbankdatei (.kdbx)",
+          "database_file": "Datenbank-Dateiname (z.B. database.kdbx)",
           "password": "Master-Passwort",
-          "keyfile_file": "Schlüsseldatei (optional)"
+          "keyfile_file": "Keyfile-Dateiname (optional, z.B. keyfile.key)"
         }
       }
     },
     "error": {
-      "invalid_auth": "Ungültiges Passwort oder Schlüsseldatei",
-      "cannot_connect": "Datenbank kann nicht geöffnet werden",
+      "database_not_found": "Datenbank-Datei nicht gefunden in /config/keepassxc_otp/",
+      "keyfile_not_found": "Keyfile nicht gefunden in /config/keepassxc_otp/",
+      "invalid_auth": "Ungültiges Passwort oder Keyfile",
+      "cannot_connect": "Datenbank konnte nicht geöffnet werden",
       "no_otp_entries": "Keine OTP-Einträge in der Datenbank gefunden",
-      "unknown": "Unbekannter Fehler aufgetreten"
+      "unknown": "Unerwarteter Fehler"
     },
     "abort": {
       "already_configured": "Diese KeePassXC Datenbank ist bereits konfiguriert"

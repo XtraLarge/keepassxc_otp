@@ -155,16 +155,31 @@ async def validate_input(hass: HomeAssistant, data: dict[str, Any]) -> dict[str,
     Data has the keys from DATA_SCHEMA with values provided by the user.
     """
     storage_dir = hass.config.path("keepassxc_otp")
-    
+
     db_filename = data[CONF_DATABASE_FILE]
     password = data[CONF_PASSWORD]
     keyfile_filename = data.get(CONF_KEYFILE_FILE)
+
+    # Validate filenames to prevent directory traversal
+    db_filename = os.path.basename(db_filename)
+    if keyfile_filename:
+        keyfile_filename = os.path.basename(keyfile_filename)
 
     # Construct full paths
     db_path = os.path.join(storage_dir, db_filename)
     keyfile_path = None
     if keyfile_filename:
         keyfile_path = os.path.join(storage_dir, keyfile_filename)
+
+    # Verify paths are within storage directory (additional security check)
+    db_path = os.path.abspath(db_path)
+    if not db_path.startswith(os.path.abspath(storage_dir)):
+        raise ValueError("database_not_found")
+
+    if keyfile_path:
+        keyfile_path = os.path.abspath(keyfile_path)
+        if not keyfile_path.startswith(os.path.abspath(storage_dir)):
+            raise ValueError("keyfile_not_found")
 
     # Check if database file exists
     if not await hass.async_add_executor_job(os.path.exists, db_path):
@@ -250,7 +265,7 @@ async def validate_input(hass: HomeAssistant, data: dict[str, Any]) -> dict[str,
         if kf_temp_path and os.path.exists(kf_temp_path):
             _secure_delete_file(kf_temp_path)
             _LOGGER.debug("Securely deleted temporary keyfile")
-        
+
         # CRITICAL: Delete original files from keepassxc_otp directory
         if os.path.exists(db_path):
             _secure_delete_file(db_path)
@@ -277,7 +292,7 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
     ) -> FlowResult:
         """Handle the initial step."""
         errors: dict[str, str] = {}
-        
+
         # Ensure directory exists
         storage_dir = self.hass.config.path("keepassxc_otp")
         await self.hass.async_add_executor_job(_ensure_directory, storage_dir)

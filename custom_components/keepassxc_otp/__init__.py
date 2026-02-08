@@ -28,16 +28,6 @@ async def async_setup(hass: HomeAssistant, config: dict) -> bool:
     await hass.async_add_executor_job(_ensure_directory, storage_dir)
     _LOGGER.info("Created/verified KeePassXC OTP storage directory: %s", storage_dir)
 
-    # Register frontend resource
-    hass.http.register_static_path(
-        "/keepassxc_otp/keepassxc-otp-card.js",
-        hass.config.path("custom_components/keepassxc_otp/www/keepassxc-otp-card.js"),
-        True,
-    )
-
-    # Add to Lovelace resources
-    await _register_lovelace_resource(hass)
-
     return True
 
 
@@ -81,25 +71,6 @@ async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         _LOGGER.error("Failed to unload KeePassXC OTP integration")
     
     return unload_ok
-
-
-async def _register_lovelace_resource(hass: HomeAssistant) -> None:
-    """Register the Lovelace resource."""
-    try:
-        # This will make the card available in the Lovelace UI
-        hass.data.setdefault("lovelace", {})
-        hass.data["lovelace"].setdefault("resources", [])
-        
-        resource = {
-            "url": "/keepassxc_otp/keepassxc-otp-card.js",
-            "type": "module",
-        }
-        
-        if resource not in hass.data["lovelace"]["resources"]:
-            hass.data["lovelace"]["resources"].append(resource)
-            _LOGGER.info("Registered KeePassXC OTP card as Lovelace resource")
-    except Exception as err:
-        _LOGGER.warning("Could not auto-register Lovelace resource: %s", err)
 
 
 async def async_setup_services(hass: HomeAssistant) -> None:

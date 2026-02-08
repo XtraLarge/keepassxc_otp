@@ -3,7 +3,7 @@
     "step": {
       "user": {
         "title": "KeePassXC OTP Einrichtung",
-        "description": "Wählen Sie eine Person und legen Sie deren KeePassXC-Datenbank hier ab:\n\n**{storage_path}/**\n\nGeben Sie dann die Dateinamen unten ein.\n\n⚠️ **Warnung:** Dateien werden nach dem Import sicher gelöscht!",
+        "description": "Wählen Sie eine Person und legen Sie die KeePassXC-Datenbankdatei hier ab:\n\n**{storage_path}/**\n\nGeben Sie dann die Dateinamen unten ein.\n\n⚠️ **Warnung:** Dateien werden nach dem Import sicher gelöscht!",
         "data": {
           "person_entity_id": "Person",
           "database_file": "Datenbank-Dateiname (z.B. database.kdbx)",
@@ -27,8 +27,8 @@
     "error": {
       "person_not_found": "Ausgewählte Person nicht gefunden",
       "person_already_configured": "Für diese Person ist bereits eine KeePassXC OTP Integration konfiguriert",
-      "database_not_found": "Datenbank-Datei im Speicherverzeichnis nicht gefunden",
-      "keyfile_not_found": "Keyfile im Speicherverzeichnis nicht gefunden",
+      "database_not_found": "Datenbank-Datei nicht gefunden in /config/keepassxc_otp/",
+      "keyfile_not_found": "Keyfile nicht gefunden in /config/keepassxc_otp/",
       "invalid_auth": "Ungültiges Passwort oder Keyfile",
       "cannot_connect": "Datenbank konnte nicht geöffnet werden",
       "no_otp_entries": "Keine OTP-Einträge in der Datenbank gefunden",

@@ -246,10 +246,10 @@ async def validate_input(hass: HomeAssistant, data: dict[str, Any], person_name:
     Args:
         hass: Home Assistant instance
         data: User input data
-        person_name: Name of the person (friendly name from person entity)
+        person_name: Name of the person (for logging only)
     """
-    # Use person-specific directory (based on person's friendly name)
-    storage_dir = hass.config.path(f"keepassxc_otp/{person_name}")
+    # Use SHARED directory for all imports (not person-specific)
+    storage_dir = hass.config.path("keepassxc_otp")
 
     db_filename = data[CONF_DATABASE_FILE]
     password = data[CONF_PASSWORD]
@@ -434,8 +434,8 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             }
         )
         
-        # Create person-specific directory
-        storage_dir = self.hass.config.path(f"keepassxc_otp/{person_name}")
+        # Use SHARED directory (not person-specific)
+        storage_dir = self.hass.config.path("keepassxc_otp")
         await self.hass.async_add_executor_job(_ensure_directory, storage_dir)
         
         if user_input is not None:
@@ -525,12 +525,12 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                             break
                     
                     if not errors:
-                        # Create person-specific directory
-                        storage_dir = self.hass.config.path(f"keepassxc_otp/{person_name}")
+                        # Create SHARED directory (not person-specific)
+                        storage_dir = self.hass.config.path("keepassxc_otp")
                         await self.hass.async_add_executor_job(_ensure_directory, storage_dir)
                         
                         try:
-                            # Pass person info to validation
+                            # Pass person info to validation (for logging only)
                             info = await validate_input(self.hass, user_input, person_name)
                             
                             # Store person entity ID along with OTP secrets
@@ -561,18 +561,9 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                             _LOGGER.exception("Unexpected exception")
                             errors["base"] = "unknown"
 
-        # Get description with dynamic path if person selected
-        description_placeholders = {}
-        if user_input and user_input.get("person_entity_id"):
-            person_state = self.hass.states.get(user_input["person_entity_id"])
-            if person_state:
-                try:
-                    person_name, _ = _get_person_info(person_state)
-                    storage_dir = self.hass.config.path(f"keepassxc_otp/{person_name}")
-                    description_placeholders["storage_path"] = storage_dir
-                except (ValueError, IndexError, AttributeError):
-                    pass  # Don't show path if person info is invalid
-
+        # Static storage path (no dynamic variable needed)
+        storage_dir = self.hass.config.path("keepassxc_otp")
+        
         # Show form with person selector
         return self.async_show_form(
             step_id="user",
@@ -580,5 +571,7 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                 DATA_SCHEMA, user_input
             ) if user_input else DATA_SCHEMA,
             errors=errors,
-            description_placeholders=description_placeholders,
+            description_placeholders={
+                "storage_path": storage_dir,
+            },
         )

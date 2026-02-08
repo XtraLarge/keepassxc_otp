@@ -24,25 +24,26 @@ Each person in your Home Assistant setup can have their own KeePassXC database w
 
 #### How It Works
 
-- **Person-Specific Directories**: Each person gets their own directory with a friendly name: `/config/keepassxc_otp/<PersonName>/`
-  - Example: `/config/keepassxc_otp/Alice/` for person.alice
-  - Example: `/config/keepassxc_otp/Bob/` for person.bob
-- **Separate OTP Entries**: Each person's OTP tokens are isolated
+- **Shared Import Directory**: All persons use the same directory for imports: `/config/keepassxc_otp/`
+- **Sequential Imports**: Import one person's database at a time (not simultaneously)
+- **Separate OTP Entries**: Each person's OTP tokens are isolated after import
 - **Person-Based Entity IDs**: Entities use person ID for identification
   - Example: `sensor.keepassxc_otp_alice_gmail` (Alice's Gmail OTP from person.alice)
   - Example: `sensor.keepassxc_otp_bob_github` (Bob's GitHub OTP from person.bob)
 - **Privacy & Security**: OTP tokens are organized by person entity
 - **One Integration Per Person**: Each person can configure one integration instance
+- **Files Deleted After Import**: Database files are securely deleted after extraction
 
 #### Setup for Each Person
 
 1. **Add the integration** (Settings → Integrations → Add → KeePassXC OTP)
 2. **Select a person** from the dropdown (person.alice, person.bob, etc.)
-3. **Place your database** in `/config/keepassxc_otp/<PersonName>/`
-   - The directory uses the person's friendly name (e.g., "Alice", "Bob")
-   - The directory will be created automatically when you add the integration
-   - Each person has their own isolated directory
+3. **Place your database** in `/config/keepassxc_otp/`
+   - The shared directory is created automatically when you add the integration
+   - All persons use the same directory for imports
+   - Files are deleted after import, so no conflicts occur
 4. **Configure your database** with your password and optional keyfile
+5. **Import sequentially** - Complete one person's import before starting another
 
 #### Entity Naming
 
@@ -111,9 +112,8 @@ For person-specific OTP management:
 
 1. **Add the integration** (Settings → Devices & Services → Add Integration → KeePassXC OTP)
 2. **Select a person** from the person selector dropdown (e.g., person.alice, person.bob)
-3. **Copy your files** to the person-specific directory shown in the configuration form:
-   - The directory will be `/config/keepassxc_otp/<PersonName>/` (using the person's friendly name)
-   - Example: `/config/keepassxc_otp/Alice/` for person.alice
+3. **Copy your files** to the shared directory shown in the configuration form:
+   - The directory will be `/config/keepassxc_otp/` (same for all persons)
    - This directory is automatically created when you start the configuration
 
    You can copy files via:
@@ -132,7 +132,14 @@ For person-specific OTP management:
    - Original files are securely deleted from the storage directory
    - To update: Use the reconfigure feature (see below)
 
-⚠️ **Important:** Files in the storage directory will be permanently deleted after successful import!
+6. **For multiple persons**: Import sequentially
+   - Complete Alice's import → Files deleted
+   - Upload Bob's database → Complete Bob's import → Files deleted
+   - Upload Charlie's database → Complete Charlie's import → Files deleted
+
+⚠️ **Important:** 
+- Files in the storage directory will be permanently deleted after successful import!
+- Do not import multiple databases simultaneously - do one at a time
 
 **Note:** Each person can have ONE integration instance. The configuration form shows the exact path where you should place your files.
 
@@ -374,25 +381,26 @@ Jede Person in Ihrem Home Assistant Setup kann ihre eigene KeePassXC-Datenbank m
 
 #### Funktionsweise
 
-- **Personenspezifische Verzeichnisse**: Jede Person erhält ihr eigenes Verzeichnis mit einem freundlichen Namen: `/config/keepassxc_otp/<PersonName>/`
-  - Beispiel: `/config/keepassxc_otp/Alice/` für person.alice
-  - Beispiel: `/config/keepassxc_otp/Bob/` für person.bob
-- **Getrennte OTP-Einträge**: Die OTP-Token jeder Person sind isoliert
+- **Gemeinsames Import-Verzeichnis**: Alle Personen verwenden dasselbe Verzeichnis für Importe: `/config/keepassxc_otp/`
+- **Sequentielle Importe**: Importieren Sie die Datenbank einer Person nach der anderen (nicht gleichzeitig)
+- **Getrennte OTP-Einträge**: Die OTP-Token jeder Person sind nach dem Import isoliert
 - **Personenbasierte Entitäts-IDs**: Entitäten verwenden Personen-ID zur Identifizierung
   - Beispiel: `sensor.keepassxc_otp_alice_gmail` (Alices Gmail OTP von person.alice)
   - Beispiel: `sensor.keepassxc_otp_bob_github` (Bobs GitHub OTP von person.bob)
 - **Datenschutz & Sicherheit**: OTP-Token sind nach Personen-Entität organisiert
 - **Eine Integration pro Person**: Jede Person kann eine Integrationsinstanz konfigurieren
+- **Dateien werden nach dem Import gelöscht**: Datenbankdateien werden nach der Extraktion sicher gelöscht
 
 #### Einrichtung für jede Person
 
 1. **Fügen Sie die Integration hinzu** (Einstellungen → Integrationen → Hinzufügen → KeePassXC OTP)
 2. **Wählen Sie eine Person** aus dem Dropdown (person.alice, person.bob, usw.)
-3. **Platzieren Sie Ihre Datenbank** in `/config/keepassxc_otp/<PersonName>/`
-   - Das Verzeichnis verwendet den freundlichen Namen der Person (z.B. "Alice", "Bob")
-   - Das Verzeichnis wird automatisch erstellt, wenn Sie die Integration hinzufügen
-   - Jede Person hat ihr eigenes isoliertes Verzeichnis
+3. **Platzieren Sie Ihre Datenbank** in `/config/keepassxc_otp/`
+   - Das gemeinsame Verzeichnis wird automatisch erstellt, wenn Sie die Integration hinzufügen
+   - Alle Personen verwenden dasselbe Verzeichnis für Importe
+   - Dateien werden nach dem Import gelöscht, sodass keine Konflikte auftreten
 4. **Konfigurieren Sie Ihre Datenbank** mit Ihrem Passwort und optionaler Schlüsseldatei
+5. **Sequentiell importieren** - Schließen Sie den Import einer Person ab, bevor Sie eine andere starten
 
 #### Entitätsbenennung
 
@@ -461,9 +469,8 @@ Für personenspezifische OTP-Verwaltung:
 
 1. **Fügen Sie die Integration hinzu** (Einstellungen → Geräte & Dienste → Integration hinzufügen → KeePassXC OTP)
 2. **Wählen Sie eine Person** aus dem Personen-Auswahl-Dropdown (z.B. person.alice, person.bob)
-3. **Kopieren Sie Ihre Dateien** in das personenspezifische Verzeichnis, das im Konfigurationsformular angezeigt wird:
-   - Das Verzeichnis wird `/config/keepassxc_otp/<PersonName>/` sein (mit dem freundlichen Namen der Person)
-   - Beispiel: `/config/keepassxc_otp/Alice/` für person.alice
+3. **Kopieren Sie Ihre Dateien** in das gemeinsame Verzeichnis, das im Konfigurationsformular angezeigt wird:
+   - Das Verzeichnis wird `/config/keepassxc_otp/` sein (gleich für alle Personen)
    - Dieses Verzeichnis wird automatisch erstellt, wenn Sie die Konfiguration starten
 
    Sie können Dateien kopieren über:
@@ -482,7 +489,14 @@ Für personenspezifische OTP-Verwaltung:
    - Original-Dateien werden sicher aus dem Speicherverzeichnis gelöscht
    - Zum Aktualisieren: Verwenden Sie die Neukonfigurations-Funktion (siehe unten)
 
-⚠️ **Wichtig:** Dateien im Speicherverzeichnis werden nach erfolgreichem Import dauerhaft gelöscht!
+6. **Für mehrere Personen**: Sequentiell importieren
+   - Alices Import abschließen → Dateien gelöscht
+   - Bobs Datenbank hochladen → Bobs Import abschließen → Dateien gelöscht
+   - Charlies Datenbank hochladen → Charlies Import abschließen → Dateien gelöscht
+
+⚠️ **Wichtig:**
+- Dateien im Speicherverzeichnis werden nach erfolgreichem Import dauerhaft gelöscht!
+- Importieren Sie nicht mehrere Datenbanken gleichzeitig - eine nach der anderen
 
 **Hinweis:** Jede Person kann EINE Integrationsinstanz haben. Das Konfigurationsformular zeigt den genauen Pfad, wo Sie Ihre Dateien platzieren sollten.
 

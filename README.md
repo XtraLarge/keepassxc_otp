@@ -163,6 +163,69 @@ automation:
           message: "New GitHub OTP: {{ states('sensor.keepassxc_otp_github') }}"
 ```
 
+## Lovelace Card
+
+The integration includes a custom Lovelace card with auto-discovery of all OTP entities.
+
+### Features
+
+- 🔍 **Auto-Discovery** - Automatically finds all KeePassXC OTP sensors
+- 📋 **Copy to Clipboard** - Click button to copy token
+- 🎨 **Color-Coded Gauge** - Visual timer (Green → Yellow → Red)
+- 🔄 **Live Updates** - Tokens refresh automatically
+- 💅 **Modern Design** - Beautiful and responsive
+
+### Installation
+
+The card is automatically registered when you install the integration.
+
+### Usage
+
+Add to your Lovelace dashboard:
+
+```yaml
+type: custom:keepassxc-otp-card
+title: 🔐 My OTP Tokens
+show_gauge: true
+show_copy_button: true
+```
+
+### Configuration Options
+
+| Option | Type | Default | Description |
+|--------|------|---------|-------------|
+| `title` | string | `🔐 KeePassXC OTP` | Card title |
+| `show_gauge` | boolean | `true` | Show time remaining gauge |
+| `show_copy_button` | boolean | `true` | Show copy button |
+| `layout` | string | `auto` | Layout mode |
+
+### Services
+
+#### `keepassxc_otp.copy_token`
+
+Copy an OTP token to clipboard.
+
+```yaml
+service: keepassxc_otp.copy_token
+data:
+  entity_id: sensor.keepassxc_otp_gmail
+```
+
+#### `keepassxc_otp.get_all_entities`
+
+Get list of all OTP entities (used internally by card).
+
+### Card Display
+
+The card displays:
+- Entity name and issuer
+- Current 6-digit token (formatted as "123 456")
+- Time remaining gauge with color coding:
+  - 🟢 Green: 20-30 seconds remaining
+  - 🟡 Yellow: 10-19 seconds remaining
+  - 🔴 Red: 0-9 seconds remaining
+- Copy button that shows "✅ Copied!" on success
+
 ### Troubleshooting
 
 #### Integration not showing up
@@ -380,6 +443,69 @@ automation:
         data:
           message: "Neuer GitHub OTP: {{ states('sensor.keepassxc_otp_github') }}"
 ```
+
+## Lovelace-Karte
+
+Die Integration enthält eine benutzerdefinierte Lovelace-Karte mit automatischer Erkennung aller OTP-Entitäten.
+
+### Funktionen
+
+- 🔍 **Auto-Erkennung** - Findet automatisch alle KeePassXC OTP-Sensoren
+- 📋 **In Zwischenablage kopieren** - Klicken Sie auf die Schaltfläche, um das Token zu kopieren
+- 🎨 **Farbcodierte Anzeige** - Visueller Timer (Grün → Gelb → Rot)
+- 🔄 **Live-Updates** - Token werden automatisch aktualisiert
+- 💅 **Modernes Design** - Schön und responsiv
+
+### Installation
+
+Die Karte wird automatisch registriert, wenn Sie die Integration installieren.
+
+### Verwendung
+
+Fügen Sie dies zu Ihrem Lovelace-Dashboard hinzu:
+
+```yaml
+type: custom:keepassxc-otp-card
+title: 🔐 Meine OTP-Token
+show_gauge: true
+show_copy_button: true
+```
+
+### Konfigurationsoptionen
+
+| Option | Typ | Standard | Beschreibung |
+|--------|-----|----------|--------------|
+| `title` | string | `🔐 KeePassXC OTP` | Kartentitel |
+| `show_gauge` | boolean | `true` | Verbleibende Zeit-Anzeige anzeigen |
+| `show_copy_button` | boolean | `true` | Kopierschaltfläche anzeigen |
+| `layout` | string | `auto` | Layout-Modus |
+
+### Dienste
+
+#### `keepassxc_otp.copy_token`
+
+Ein OTP-Token in die Zwischenablage kopieren.
+
+```yaml
+service: keepassxc_otp.copy_token
+data:
+  entity_id: sensor.keepassxc_otp_gmail
+```
+
+#### `keepassxc_otp.get_all_entities`
+
+Liste aller OTP-Entitäten abrufen (wird intern von der Karte verwendet).
+
+### Kartenanzeige
+
+Die Karte zeigt:
+- Entitätsname und Aussteller
+- Aktueller 6-stelliger Token (formatiert als "123 456")
+- Verbleibende Zeit-Anzeige mit Farbcodierung:
+  - 🟢 Grün: 20-30 Sekunden verbleibend
+  - 🟡 Gelb: 10-19 Sekunden verbleibend
+  - 🔴 Rot: 0-9 Sekunden verbleibend
+- Kopierschaltfläche, die "✅ Kopiert!" bei Erfolg anzeigt
 
 ### Fehlerbehebung
 

@@ -371,6 +371,79 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
 
     VERSION = 1
 
+    async def async_step_reconfigure(
+        self, user_input: dict[str, Any] | None = None
+    ) -> FlowResult:
+        """Handle reconfiguration of the integration.
+        
+        This allows users to:
+        - Upload a new database file
+        - Re-extract OTP secrets
+        - Automatically remove old entities
+        - Create new entities from the updated database
+        """
+        # Initialize errors dict for form validation error handling
+        errors: dict[str, str] = {}
+        
+        # Ensure directory exists
+        storage_dir = self.hass.config.path("keepassxc_otp")
+        await self.hass.async_add_executor_job(_ensure_directory, storage_dir)
+        
+        # Get the existing config entry being reconfigured
+        entry = self.hass.config_entries.async_get_entry(self.context["entry_id"])
+        
+        if user_input is not None:
+            try:
+                # Validate new input and extract OTP secrets
+                info = await validate_input(self.hass, user_input)
+                
+                # Update the existing config entry with new OTP secrets
+                # This will replace all old secrets with new ones
+                self.hass.config_entries.async_update_entry(
+                    entry,
+                    data={
+                        CONF_OTP_SECRETS: info[CONF_OTP_SECRETS],
+                    }
+                )
+                
+                _LOGGER.info(
+                    "Reconfigured KeePassXC OTP integration with %d secrets",
+                    len(info[CONF_OTP_SECRETS])
+                )
+                
+                # Reload the integration to remove old entities and create new ones
+                await self.hass.config_entries.async_reload(entry.entry_id)
+                
+                return self.async_abort(reason="reconfigure_successful")
+                
+            except ValueError as err:
+                error_str = str(err)
+                if "database_not_found" in error_str:
+                    errors["base"] = "database_not_found"
+                elif "keyfile_not_found" in error_str:
+                    errors["base"] = "keyfile_not_found"
+                elif "invalid_auth" in error_str:
+                    errors["base"] = "invalid_auth"
+                elif "cannot_connect" in error_str:
+                    errors["base"] = "cannot_connect"
+                elif "no_otp_entries" in error_str:
+                    errors["base"] = "no_otp_entries"
+                else:
+                    errors["base"] = "unknown"
+            except Exception:
+                _LOGGER.exception("Unexpected exception during reconfiguration")
+                errors["base"] = "unknown"
+        
+        # Show the same form as initial setup
+        return self.async_show_form(
+            step_id="reconfigure",
+            data_schema=DATA_SCHEMA,
+            errors=errors,
+            description_placeholders={
+                "storage_path": storage_dir,
+            },
+        )
+
     async def async_step_user(
         self, user_input: dict[str, Any] | None = None
     ) -> FlowResult:

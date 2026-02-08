@@ -9,18 +9,28 @@
           "password": "Master-Passwort",
           "keyfile_file": "Keyfile-Dateiname (optional, z.B. keyfile.key)"
         }
+      },
+      "reconfigure": {
+        "title": "KeePassXC OTP neu konfigurieren",
+        "description": "Aktualisieren Sie Ihre OTP-Einträge durch Hochladen einer neuen Datenbank.\n\nLegen Sie Ihre aktualisierte KeePassXC-Datenbank und das Keyfile hier ab:\n\n**{storage_path}/**\n\n⚠️ **Dies wird:**\n- Alle vorhandenen OTP-Entitäten entfernen\n- Neue OTP-Einträge aus der Datenbank extrahieren\n- Neue Entitäten erstellen\n- Die hochgeladenen Dateien sicher löschen\n\n✅ **Entitäts-Historie bleibt erhalten, wenn Namen übereinstimmen**",
+        "data": {
+          "database_file": "Datenbank-Dateiname (z.B. database.kdbx)",
+          "password": "Master-Passwort",
+          "keyfile_file": "Keyfile-Dateiname (optional, z.B. keyfile.key)"
+        }
       }
     },
     "error": {
-      "database_not_found": "Datenbank-Datei nicht im Speicherverzeichnis gefunden",
-      "keyfile_not_found": "Keyfile nicht im Speicherverzeichnis gefunden",
+      "database_not_found": "Datenbank-Datei nicht gefunden in {storage_path}",
+      "keyfile_not_found": "Keyfile nicht gefunden in {storage_path}",
       "invalid_auth": "Ungültiges Passwort oder Keyfile",
       "cannot_connect": "Datenbank konnte nicht geöffnet werden",
       "no_otp_entries": "Keine OTP-Einträge in der Datenbank gefunden",
       "unknown": "Unerwarteter Fehler"
     },
     "abort": {
-      "already_configured": "Diese KeePassXC Datenbank ist bereits konfiguriert"
+      "already_configured": "Diese KeePassXC Datenbank ist bereits konfiguriert",
+      "reconfigure_successful": "Erfolgreich neu konfiguriert! Alle Entitäten wurden aktualisiert."
     }
   }
 }

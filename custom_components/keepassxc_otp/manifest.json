@@ -1,7 +1,7 @@
 {
   "domain": "keepassxc_otp",
   "name": "KeePassXC OTP",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "documentation": "https://github.com/XtraLarge/keepassxc_otp",
   "issue_tracker": "https://github.com/XtraLarge/keepassxc_otp/issues",
   "requirements": [

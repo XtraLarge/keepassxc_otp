@@ -105,7 +105,11 @@ async def async_setup_entry(
     async_add_entities: AddEntitiesCallback,
 ) -> None:
     """Set up KeePassXC OTP sensors from a config entry."""
-    otp_secrets = config_entry.data[CONF_OTP_SECRETS]
+    otp_secrets = config_entry.data.get(CONF_OTP_SECRETS, {})
+
+    if not otp_secrets:
+        _LOGGER.warning("No OTP secrets found in config entry")
+        return
 
     coordinator = KeePassXCOTPCoordinator(hass, otp_secrets)
 
@@ -117,9 +121,12 @@ async def async_setup_entry(
         KeePassXCOTPSensor(coordinator, entry_uuid)
         for entry_uuid in otp_secrets.keys()
     ]
-    
-    _LOGGER.info("Creating %d OTP sensor entities", len(entities))
-    async_add_entities(entities)
+
+    _LOGGER.info(
+        "Creating %d OTP sensor entities for KeePassXC OTP integration",
+        len(entities)
+    )
+    async_add_entities(entities, update_before_add=True)
 
 
 class KeePassXCOTPSensor(CoordinatorEntity, SensorEntity):

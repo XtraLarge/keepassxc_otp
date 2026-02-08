@@ -30,7 +30,9 @@
     },
     "abort": {
       "already_configured": "Diese KeePassXC Datenbank ist bereits konfiguriert",
-      "reconfigure_successful": "Erfolgreich neu konfiguriert! Alle Entitäten wurden aktualisiert."
+      "reconfigure_successful": "Erfolgreich neu konfiguriert! Alle Entitäten wurden aktualisiert.",
+      "no_user": "Kein Benutzerkontext verfügbar. Bitte melden Sie sich an.",
+      "not_authorized": "Sie sind nicht berechtigt, diese Integrationsinstanz zu ändern."
     }
   }
 }

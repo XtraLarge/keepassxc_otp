@@ -516,19 +516,15 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         imported_count = len(import_stats.get("imported", []))
         if imported_count > 0:
             lines.append(f"✅ **Imported: {imported_count} entries**")
-            for name in import_stats["imported"][:10]:  # Limit to first 10
+            for name in import_stats["imported"]:
                 lines.append(f"  - {name}")
-            if imported_count > 10:
-                lines.append(f"  - ... and {imported_count - 10} more")
         
         # Skipped entries
         skipped_count = len(import_stats.get("skipped", []))
         if skipped_count > 0:
             lines.append(f"\n⏭️ **Skipped: {skipped_count} entries**")
-            for item in import_stats["skipped"][:10]:  # Limit to first 10
+            for item in import_stats["skipped"]:
                 lines.append(f"  - \"{item['name']}\" ({item['reason']})")
-            if skipped_count > 10:
-                lines.append(f"  - ... and {skipped_count - 10} more")
         
         # Total
         total_count = import_stats.get("total_entries", 0)

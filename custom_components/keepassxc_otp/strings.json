@@ -25,7 +25,7 @@
       },
       "import_report": {
         "title": "✅ Import Successful!",
-        "description": "## Import Report\n\n{import_stats}\n\nClick **Submit** to continue."
+        "description": "## Import Report\n\n{import_stats}\n\nClick **OK** to continue."
       }
     },
     "error": {

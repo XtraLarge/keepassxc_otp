@@ -173,7 +173,7 @@ def _get_person_info(person_state) -> tuple[str, str]:
     if "." not in entity_id:
         raise ValueError(f"Invalid person entity ID format: {entity_id}")
     
-    person_id = entity_id.split(".", 1)[1]  # Use maxsplit=1 to handle edge cases
+    person_id = entity_id.split(".", 1)[1]
     
     return person_name, person_id
 

@@ -160,7 +160,7 @@ class KeePassXCOTPSensor(CoordinatorEntity, SensorEntity):
         otp_data = coordinator.data.get(entry_uuid, {})
         
         # Create person-specific entity ID using person ID (from person.alice -> alice)
-        base_name = otp_data.get("name", "unknown_otp_entry")
+        base_name = otp_data.get("name", "Unknown OTP Entry")
         entity_name = sanitize_entity_name(base_name)
         
         self._attr_unique_id = f"{person_id}_{entry_uuid}"

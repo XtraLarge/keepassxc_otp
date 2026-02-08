@@ -1,4 +1,5 @@
 """Constants for the KeePassXC OTP integration."""
+import os
 from datetime import timedelta
 
 DOMAIN = "keepassxc_otp"
@@ -51,7 +52,6 @@ def sanitize_path_component(name: str) -> str:
     Returns:
         Sanitized name suitable for file paths
     """
-    import os
     # Remove any path separators and parent directory references
     name = name.replace("/", "_").replace("\\", "_").replace("..", "_")
     # Use os.path.basename to ensure we only get the file name component

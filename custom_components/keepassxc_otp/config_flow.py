@@ -24,6 +24,8 @@ from .const import (
     CONF_OTP_SECRETS,
     CONF_PASSWORD,
     DOMAIN,
+    sanitize_entity_name,
+    sanitize_path_component,
 )
 
 _LOGGER = logging.getLogger(__name__)
@@ -158,26 +160,22 @@ def _get_person_info(person_state) -> tuple[str, str]:
         
     Returns:
         Tuple of (person_name, person_id)
-    """
-    person_name = person_state.attributes.get("friendly_name") or person_state.name
-    person_id = person_state.entity_id.split(".")[1]  # Extract ID from person.alice -> alice
-    return person_name, person_id
-
-
-def _sanitize_entity_name(name: str) -> str:
-    """Sanitize a name for use in entity ID.
-    
-    Args:
-        name: The name to sanitize
         
-    Returns:
-        Sanitized name suitable for entity IDs
+    Raises:
+        ValueError: If the person entity ID format is invalid
     """
-    # Convert to lowercase and replace spaces/hyphens with underscores
-    entity_name = name.lower().replace(" ", "_").replace("-", "_")
-    # Remove special characters, keep only alphanumeric and underscores
-    entity_name = "".join(c for c in entity_name if c.isalnum() or c == "_")
-    return entity_name
+    # Get person name and sanitize for safe path usage
+    raw_person_name = person_state.attributes.get("friendly_name") or person_state.name
+    person_name = sanitize_path_component(raw_person_name)
+    
+    # Extract person ID from entity ID (e.g., person.alice -> alice)
+    entity_id = person_state.entity_id
+    if "." not in entity_id:
+        raise ValueError(f"Invalid person entity ID format: {entity_id}")
+    
+    person_id = entity_id.split(".", 1)[1]  # Use maxsplit=1 to handle edge cases
+    
+    return person_name, person_id
 
 
 def _parse_otpauth_uri(uri: str, entry_name: str) -> dict[str, Any] | None:
@@ -515,8 +513,11 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                 try:
                     # Get person name and ID using helper function
                     person_name, person_id = _get_person_info(person_state)
+                except ValueError as err:
+                    _LOGGER.error("Invalid person entity: %s", err)
+                    errors["person_entity_id"] = "person_not_found"
                 except (IndexError, AttributeError) as err:
-                    _LOGGER.error("Invalid person entity format: %s - %s", person_entity_id, err)
+                    _LOGGER.error("Error extracting person info: %s", err)
                     errors["person_entity_id"] = "person_not_found"
                 else:
                     # Check if this person already has an integration instance
@@ -572,7 +573,7 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                     person_name, _ = _get_person_info(person_state)
                     storage_dir = self.hass.config.path(f"keepassxc_otp/{person_name}")
                     description_placeholders["storage_path"] = storage_dir
-                except (IndexError, AttributeError):
+                except (ValueError, IndexError, AttributeError):
                     pass  # Don't show path if person info is invalid
 
         # Show form with person selector

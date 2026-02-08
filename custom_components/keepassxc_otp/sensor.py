@@ -27,25 +27,10 @@ from .const import (
     CONF_OTP_SECRETS,
     DOMAIN,
     UPDATE_INTERVAL,
+    sanitize_entity_name,
 )
 
 _LOGGER = logging.getLogger(__name__)
-
-
-def _sanitize_entity_name(name: str) -> str:
-    """Sanitize a name for use in entity ID.
-    
-    Args:
-        name: The name to sanitize
-        
-    Returns:
-        Sanitized name suitable for entity IDs
-    """
-    # Convert to lowercase and replace spaces/hyphens with underscores
-    entity_name = name.lower().replace(" ", "_").replace("-", "_")
-    # Remove special characters, keep only alphanumeric and underscores
-    entity_name = "".join(c for c in entity_name if c.isalnum() or c == "_")
-    return entity_name
 
 
 class KeePassXCOTPCoordinator(DataUpdateCoordinator):
@@ -176,7 +161,7 @@ class KeePassXCOTPSensor(CoordinatorEntity, SensorEntity):
         
         # Create person-specific entity ID using person ID (from person.alice -> alice)
         base_name = otp_data.get("name", "unknown_otp_entry")
-        entity_name = _sanitize_entity_name(base_name)
+        entity_name = sanitize_entity_name(base_name)
         
         self._attr_unique_id = f"{person_id}_{entry_uuid}"
         self.entity_id = f"sensor.{DOMAIN}_{person_id}_{entity_name}"

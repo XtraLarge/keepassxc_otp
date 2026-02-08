@@ -65,7 +65,7 @@ A Home Assistant custom integration that reads OTP/TOTP entries from a KeePassXC
 4. **Files are deleted after import** for security
    - All OTP secrets are extracted and stored encrypted in Home Assistant
    - Original files are securely deleted from `/config/keepassxc_otp/`
-   - To update: Remove integration and repeat steps 1-3
+   - To update: Use the reconfigure feature (see below)
 
 ⚠️ **Important:** Files in `/config/keepassxc_otp/` will be permanently deleted after successful import!
 
@@ -74,6 +74,34 @@ The integration will:
 - Remove any old OTP sensors from previous syncs
 - Scan your database for OTP entries
 - Create a sensor for each OTP entry found
+
+### Reconfiguration (Update OTP Entries)
+
+If you've added, removed, or modified OTP entries in your KeePassXC database, you can update the integration:
+
+1. **Copy updated files** to `/config/keepassxc_otp/`:
+   - Your updated KeePassXC database file
+   - Your keyfile (if using one)
+
+2. **Reconfigure the integration:**
+   - Go to Settings → Devices & Services
+   - Find "KeePassXC OTP"
+   - Click the three dots menu (⋮)
+   - Click "Reconfigure"
+
+3. **Enter the configuration:**
+   - Database filename
+   - Master password
+   - Keyfile (optional)
+
+4. **What happens:**
+   - ✅ Old OTP entities are removed
+   - ✅ New OTP entries are extracted from the database
+   - ✅ New entities are created
+   - ✅ Files are securely deleted
+   - ✅ Entity history is preserved if entity names match
+
+⚠️ **Note:** If entity names have changed, history will not be preserved for those entities.
 
 ### How It Works
 
@@ -255,7 +283,7 @@ Eine Home Assistant Custom Integration, die OTP/TOTP-Einträge aus einer KeePass
 4. **Dateien werden nach dem Import gelöscht** aus Sicherheitsgründen
    - Alle OTP-Geheimnisse werden extrahiert und verschlüsselt in Home Assistant gespeichert
    - Original-Dateien werden sicher aus `/config/keepassxc_otp/` gelöscht
-   - Zum Aktualisieren: Integration entfernen und Schritte 1-3 wiederholen
+   - Zum Aktualisieren: Verwenden Sie die Neukonfigurations-Funktion (siehe unten)
 
 ⚠️ **Wichtig:** Dateien in `/config/keepassxc_otp/` werden nach erfolgreichem Import dauerhaft gelöscht!
 
@@ -264,6 +292,34 @@ Die Integration wird:
 - Alle alten OTP-Sensoren aus vorherigen Synchronisierungen entfernen
 - Ihre Datenbank nach OTP-Einträgen durchsuchen
 - Einen Sensor für jeden gefundenen OTP-Eintrag erstellen
+
+### Neukonfiguration (OTP-Einträge aktualisieren)
+
+Wenn Sie OTP-Einträge in Ihrer KeePassXC-Datenbank hinzugefügt, entfernt oder geändert haben, können Sie die Integration aktualisieren:
+
+1. **Kopieren Sie aktualisierte Dateien** nach `/config/keepassxc_otp/`:
+   - Ihre aktualisierte KeePassXC-Datenbankdatei
+   - Ihre Schlüsseldatei (falls verwendet)
+
+2. **Konfigurieren Sie die Integration neu:**
+   - Gehen Sie zu Einstellungen → Geräte & Dienste
+   - Finden Sie "KeePassXC OTP"
+   - Klicken Sie auf das Drei-Punkte-Menü (⋮)
+   - Klicken Sie auf "Neu konfigurieren"
+
+3. **Geben Sie die Konfiguration ein:**
+   - Datenbank-Dateiname
+   - Master-Passwort
+   - Schlüsseldatei (optional)
+
+4. **Was passiert:**
+   - ✅ Alte OTP-Entitäten werden entfernt
+   - ✅ Neue OTP-Einträge werden aus der Datenbank extrahiert
+   - ✅ Neue Entitäten werden erstellt
+   - ✅ Dateien werden sicher gelöscht
+   - ✅ Entitäts-Historie bleibt erhalten, wenn Namen übereinstimmen
+
+⚠️ **Hinweis:** Wenn sich Entitätsnamen geändert haben, bleibt die Historie für diese Entitäten nicht erhalten.
 
 ### Funktionsweise
 

@@ -6,9 +6,10 @@ import os
 
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import Platform
-from homeassistant.core import HomeAssistant
+from homeassistant.core import HomeAssistant, ServiceCall
+from homeassistant.helpers import device_registry as dr, entity_registry as er
 
-from .const import DOMAIN
+from .const import CONF_OTP_SECRETS, DOMAIN
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -27,6 +28,16 @@ async def async_setup(hass: HomeAssistant, config: dict) -> bool:
     await hass.async_add_executor_job(_ensure_directory, storage_dir)
     _LOGGER.info("Created/verified KeePassXC OTP storage directory: %s", storage_dir)
 
+    # Register frontend resource
+    hass.http.register_static_path(
+        "/keepassxc_otp/keepassxc-otp-card.js",
+        hass.config.path("custom_components/keepassxc_otp/www/keepassxc-otp-card.js"),
+        True,
+    )
+
+    # Add to Lovelace resources
+    await _register_lovelace_resource(hass)
+
     return True
 
 
@@ -40,9 +51,12 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     # Forward setup to sensor platform
     await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
     
+    # Register services
+    await async_setup_services(hass)
+    
     _LOGGER.info(
         "Set up KeePassXC OTP integration with %d OTP secrets",
-        len(entry.data.get("otp_secrets", {}))
+        len(entry.data.get(CONF_OTP_SECRETS, {}))
     )
     
     return True
@@ -65,4 +79,106 @@ async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         _LOGGER.error("Failed to unload KeePassXC OTP integration")
     
     return unload_ok
+
+
+async def _register_lovelace_resource(hass: HomeAssistant) -> None:
+    """Register the Lovelace resource."""
+    try:
+        # This will make the card available in the Lovelace UI
+        hass.data.setdefault("lovelace", {})
+        hass.data["lovelace"].setdefault("resources", [])
+        
+        resource = {
+            "url": "/keepassxc_otp/keepassxc-otp-card.js",
+            "type": "module",
+        }
+        
+        if resource not in hass.data["lovelace"]["resources"]:
+            hass.data["lovelace"]["resources"].append(resource)
+            _LOGGER.info("Registered KeePassXC OTP card as Lovelace resource")
+    except Exception as err:
+        _LOGGER.warning("Could not auto-register Lovelace resource: %s", err)
+
+
+async def async_setup_services(hass: HomeAssistant) -> None:
+    """Set up services for KeePassXC OTP integration."""
+    
+    # Check if services are already registered to avoid duplicates
+    if hass.services.has_service(DOMAIN, "copy_token"):
+        _LOGGER.debug("Services already registered, skipping")
+        return
+    
+    async def handle_copy_token(call: ServiceCall) -> None:
+        """Handle the copy_token service call."""
+        entity_id = call.data.get("entity_id")
+        
+        # Get the entity state
+        state = hass.states.get(entity_id)
+        if not state:
+            _LOGGER.error("Entity %s not found", entity_id)
+            return
+        
+        token = state.state
+        
+        # Fire event that frontend can listen to for clipboard copy
+        hass.bus.async_fire(
+            "keepassxc_otp_copy_token",
+            {
+                "entity_id": entity_id,
+                "token": token,
+                "name": state.attributes.get("friendly_name", ""),
+            }
+        )
+        
+        # Also send a persistent notification as fallback
+        await hass.services.async_call(
+            "persistent_notification",
+            "create",
+            {
+                "title": "✅ OTP Token",
+                "message": f"Token for {state.attributes.get('friendly_name', entity_id)}:\n\n**{token}**\n\nClick to dismiss.",
+                "notification_id": f"keepassxc_otp_{entity_id}",
+            },
+            blocking=False,
+        )
+        
+        _LOGGER.debug("Copy token service called for %s", entity_id)
+    
+    async def handle_get_all_entities(call: ServiceCall) -> dict:
+        """Handle the get_all_entities service call."""
+        entity_reg = er.async_get(hass)
+        
+        # Find all entities for this integration
+        entities = []
+        for entry in entity_reg.entities.values():
+            if entry.platform == DOMAIN:
+                state = hass.states.get(entry.entity_id)
+                if state:
+                    entities.append({
+                        "entity_id": entry.entity_id,
+                        "name": state.attributes.get("friendly_name", entry.entity_id),
+                        "issuer": state.attributes.get("issuer"),
+                        "account": state.attributes.get("account"),
+                        "time_remaining": state.attributes.get("time_remaining"),
+                        "period": state.attributes.get("period"),
+                    })
+        
+        _LOGGER.debug("Found %d OTP entities", len(entities))
+        return {"entities": entities}
+    
+    # Register services
+    hass.services.async_register(
+        DOMAIN,
+        "copy_token",
+        handle_copy_token,
+    )
+    
+    hass.services.async_register(
+        DOMAIN,
+        "get_all_entities",
+        handle_get_all_entities,
+    )
+    
+    _LOGGER.info("Registered KeePassXC OTP services")
+
 

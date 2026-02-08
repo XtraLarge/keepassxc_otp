@@ -112,12 +112,14 @@ async def async_setup_entry(
     # Fetch initial data
     await coordinator.async_config_entry_first_refresh()
 
-    # Create sensors for each OTP entry
-    sensors = []
-    for entry_uuid in otp_secrets:
-        sensors.append(KeePassXCOTPSensor(coordinator, entry_uuid))
-
-    async_add_entities(sensors)
+    # Create exactly one entity per unique UUID
+    entities = [
+        KeePassXCOTPSensor(coordinator, entry_uuid)
+        for entry_uuid in otp_secrets.keys()
+    ]
+    
+    _LOGGER.info("Creating %d OTP sensor entities", len(entities))
+    async_add_entities(entities)
 
 
 class KeePassXCOTPSensor(CoordinatorEntity, SensorEntity):

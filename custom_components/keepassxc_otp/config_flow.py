@@ -1,6 +1,7 @@
 """Config flow for KeePassXC OTP integration."""
 from __future__ import annotations
 
+import hashlib
 import logging
 import os
 import tempfile
@@ -62,20 +63,76 @@ def _secure_delete_file(file_path: str) -> None:
             pass
 
 
+def _has_references(entry) -> bool:
+    """Check if entry contains KeePass field references.
+    
+    KeePass/KeePassXC use {REF:...} syntax for field references.
+    Examples: {REF:P@I:46C9B1FFBD4ABC4BBB260C6190BAD20C}
+    """
+    # Check title
+    if entry.title and "{REF:" in str(entry.title).upper():
+        return True
+    
+    # Check username
+    if hasattr(entry, 'username') and entry.username:
+        if "{REF:" in str(entry.username).upper():
+            return True
+    
+    # Check password (might contain references)
+    if hasattr(entry, 'password') and entry.password:
+        if "{REF:" in str(entry.password).upper():
+            return True
+    
+    # Check URL
+    if hasattr(entry, 'url') and entry.url:
+        if "{REF:" in str(entry.url).upper():
+            return True
+    
+    # Check notes
+    if hasattr(entry, 'notes') and entry.notes:
+        if "{REF:" in str(entry.notes).upper():
+            return True
+    
+    # Check custom properties
+    if hasattr(entry, "custom_properties"):
+        for prop_value in entry.custom_properties.values():
+            if prop_value and "{REF:" in str(prop_value).upper():
+                return True
+    
+    return False
+
+
 def _extract_otp_from_entry(entry) -> dict[str, Any] | None:
     """Extract OTP data from a KeePassXC entry."""
+    
+    # Skip entries with references - they don't contain actual OTP data
+    if _has_references(entry):
+        _LOGGER.debug(
+            "Skipping entry '%s' - contains field references (not an actual OTP entry)",
+            entry.title
+        )
+        return None
+    
     otp_uri = None
 
     # Try to find OTP in custom attributes
     if hasattr(entry, "custom_properties"):
         for prop_name, prop_value in entry.custom_properties.items():
             if prop_name.lower() in ["otp", "totp", "otpauth"]:
+                # Skip if this is a reference
+                if prop_value and "{REF:" in str(prop_value).upper():
+                    _LOGGER.debug(
+                        "Skipping OTP property in '%s' - contains reference",
+                        entry.title
+                    )
+                    continue
                 otp_uri = prop_value
                 break
 
     # Also check standard attributes
     if not otp_uri and hasattr(entry, "otp"):
-        otp_uri = entry.otp
+        if entry.otp and "{REF:" not in str(entry.otp).upper():
+            otp_uri = entry.otp
 
     if not otp_uri:
         return None
@@ -238,12 +295,29 @@ async def validate_input(hass: HomeAssistant, data: dict[str, Any]) -> dict[str,
 
         # Extract all OTP secrets from all entries
         otp_secrets = {}
+        seen_secret_hashes = set()  # Track secret hashes to avoid duplicates
+        
         for entry in kp.entries:
             otp_data = _extract_otp_from_entry(entry)
             if otp_data:
+                secret = otp_data["secret"]
+                
+                # Hash the secret for deduplication to minimize exposure of actual secret
+                secret_hash = hashlib.sha256(secret.encode()).hexdigest()
+                
+                # Skip if we've already seen this exact secret
+                if secret_hash in seen_secret_hashes:
+                    _LOGGER.debug(
+                        "Skipping duplicate OTP secret in entry '%s' - already extracted",
+                        entry.title
+                    )
+                    continue
+                
+                seen_secret_hashes.add(secret_hash)
                 entry_uuid = str(entry.uuid)
+                
                 otp_secrets[entry_uuid] = {
-                    "secret": otp_data["secret"],
+                    "secret": secret,
                     "name": entry.title,
                     "issuer": otp_data.get("issuer"),
                     "account": otp_data.get("account"),
@@ -251,9 +325,17 @@ async def validate_input(hass: HomeAssistant, data: dict[str, Any]) -> dict[str,
                     "digits": otp_data.get("digits", 6),
                     "algorithm": otp_data.get("algorithm", "SHA1"),
                 }
-                _LOGGER.debug("Extracted OTP for entry: %s (UUID: %s)", entry.title, entry_uuid)
+                _LOGGER.debug(
+                    "Extracted OTP for entry: %s (UUID: %s)",
+                    entry.title,
+                    entry_uuid
+                )
 
-        _LOGGER.info("Extracted %d OTP secrets from database", len(otp_secrets))
+        _LOGGER.info(
+            "Successfully extracted %d unique OTP secrets. "
+            "Skipped entries with references and duplicates.",
+            len(otp_secrets)
+        )
 
         if not otp_secrets:
             _LOGGER.warning("No OTP entries found in the database")

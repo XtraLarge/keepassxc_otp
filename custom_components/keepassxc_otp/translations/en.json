@@ -2,20 +2,22 @@
   "config": {
     "step": {
       "user": {
-        "title": "KeePassXC OTP Configuration",
-        "description": "Upload your KeePassXC database file and enter credentials",
+        "title": "KeePassXC OTP Setup",
+        "description": "Please place your KeePassXC database and keyfile in:\n\n**{storage_path}/**\n\nThen enter the filenames below.\n\n⚠️ **Warning:** Files will be securely deleted after import!",
         "data": {
-          "database_file": "Database File (.kdbx)",
-          "password": "Master Password",
-          "keyfile_file": "Keyfile (optional)"
+          "database_file": "Database filename (e.g., database.kdbx)",
+          "password": "Master password",
+          "keyfile_file": "Keyfile filename (optional, e.g., keyfile.key)"
         }
       }
     },
     "error": {
+      "database_not_found": "Database file not found in storage directory",
+      "keyfile_not_found": "Keyfile not found in storage directory",
       "invalid_auth": "Invalid password or keyfile",
-      "cannot_connect": "Cannot open database",
-      "no_otp_entries": "No OTP entries found in the database",
-      "unknown": "Unknown error occurred"
+      "cannot_connect": "Failed to open database",
+      "no_otp_entries": "No OTP entries found in database",
+      "unknown": "Unexpected error occurred"
     },
     "abort": {
       "already_configured": "This KeePassXC database is already configured"

@@ -15,7 +15,6 @@ from homeassistant import config_entries
 from homeassistant.core import HomeAssistant
 from homeassistant.data_entry_flow import FlowResult
 import homeassistant.helpers.config_validation as cv
-from homeassistant.helpers.selector import FileSelector, FileSelectorConfig
 
 from .const import (
     CONF_DATABASE_FILE,
@@ -28,12 +27,15 @@ from .const import (
 _LOGGER = logging.getLogger(__name__)
 
 
-def _read_uploaded_file(hass: HomeAssistant, file_id: str) -> bytes:
-    """Read uploaded file content."""
-    # In Home Assistant, file uploads are stored temporarily
-    # The file_id is the path to the uploaded file
-    with open(file_id, "rb") as file:
+def _read_file(file_path: str) -> bytes:
+    """Read file content."""
+    with open(file_path, "rb") as file:
         return file.read()
+
+
+def _ensure_directory(path: str) -> None:
+    """Ensure directory exists with proper permissions."""
+    os.makedirs(path, mode=0o755, exist_ok=True)
 
 
 def _secure_delete_file(file_path: str) -> None:
@@ -140,11 +142,9 @@ def _parse_otpauth_uri(uri: str, entry_name: str) -> dict[str, Any] | None:
 
 DATA_SCHEMA = vol.Schema(
     {
-        vol.Required(CONF_DATABASE_FILE): FileSelector(
-            FileSelectorConfig(accept=".kdbx")
-        ),
+        vol.Required(CONF_DATABASE_FILE, default="database.kdbx"): cv.string,
         vol.Required(CONF_PASSWORD): cv.string,
-        vol.Optional(CONF_KEYFILE_FILE): FileSelector(FileSelectorConfig()),
+        vol.Optional(CONF_KEYFILE_FILE, default=""): cv.string,
     }
 )
 
@@ -154,20 +154,48 @@ async def validate_input(hass: HomeAssistant, data: dict[str, Any]) -> dict[str,
 
     Data has the keys from DATA_SCHEMA with values provided by the user.
     """
-    db_file_id = data[CONF_DATABASE_FILE]
+    storage_dir = hass.config.path("keepassxc_otp")
+
+    db_filename = data[CONF_DATABASE_FILE]
     password = data[CONF_PASSWORD]
-    keyfile_id = data.get(CONF_KEYFILE_FILE)
+    keyfile_filename = data.get(CONF_KEYFILE_FILE)
 
-    # Read uploaded files
-    db_content = await hass.async_add_executor_job(
-        _read_uploaded_file, hass, db_file_id
-    )
+    # Validate filenames to prevent directory traversal
+    db_filename = os.path.basename(db_filename)
+    if keyfile_filename and keyfile_filename.strip():
+        keyfile_filename = os.path.basename(keyfile_filename)
+    else:
+        keyfile_filename = None
 
+    # Construct full paths
+    db_path = os.path.join(storage_dir, db_filename)
+    keyfile_path = None
+    if keyfile_filename:
+        keyfile_path = os.path.join(storage_dir, keyfile_filename)
+
+    # Verify paths are within storage directory (additional security check)
+    db_path = os.path.abspath(db_path)
+    if not db_path.startswith(os.path.abspath(storage_dir)):
+        raise ValueError("database_not_found")
+
+    if keyfile_path:
+        keyfile_path = os.path.abspath(keyfile_path)
+        if not keyfile_path.startswith(os.path.abspath(storage_dir)):
+            raise ValueError("keyfile_not_found")
+
+    # Check if database file exists
+    if not await hass.async_add_executor_job(os.path.exists, db_path):
+        raise ValueError("database_not_found")
+
+    # Check if keyfile exists (if provided)
+    if keyfile_path and not await hass.async_add_executor_job(os.path.exists, keyfile_path):
+        raise ValueError("keyfile_not_found")
+
+    # Read files
+    db_content = await hass.async_add_executor_job(_read_file, db_path)
     keyfile_content = None
-    if keyfile_id:
-        keyfile_content = await hass.async_add_executor_job(
-            _read_uploaded_file, hass, keyfile_id
-        )
+    if keyfile_path:
+        keyfile_content = await hass.async_add_executor_job(_read_file, keyfile_path)
 
     # Create temporary files
     db_temp_path = None
@@ -240,6 +268,14 @@ async def validate_input(hass: HomeAssistant, data: dict[str, Any]) -> dict[str,
             _secure_delete_file(kf_temp_path)
             _LOGGER.debug("Securely deleted temporary keyfile")
 
+        # CRITICAL: Delete original files from keepassxc_otp directory
+        if os.path.exists(db_path):
+            _secure_delete_file(db_path)
+            _LOGGER.info("Securely deleted original database file from %s", db_path)
+        if keyfile_path and os.path.exists(keyfile_path):
+            _secure_delete_file(keyfile_path)
+            _LOGGER.info("Securely deleted original keyfile from %s", keyfile_path)
+
     # Return info that you want to store in the config entry
     # Note: Password is NOT stored for security reasons
     return {
@@ -259,12 +295,20 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         """Handle the initial step."""
         errors: dict[str, str] = {}
 
+        # Ensure directory exists
+        storage_dir = self.hass.config.path("keepassxc_otp")
+        await self.hass.async_add_executor_job(_ensure_directory, storage_dir)
+
         if user_input is not None:
             try:
                 info = await validate_input(self.hass, user_input)
             except ValueError as err:
                 error_str = str(err)
-                if "invalid_auth" in error_str:
+                if "database_not_found" in error_str:
+                    errors["base"] = "database_not_found"
+                elif "keyfile_not_found" in error_str:
+                    errors["base"] = "keyfile_not_found"
+                elif "invalid_auth" in error_str:
                     errors["base"] = "invalid_auth"
                 elif "cannot_connect" in error_str:
                     errors["base"] = "cannot_connect"
@@ -284,6 +328,12 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                     },
                 )
 
+        # Show form with description
         return self.async_show_form(
-            step_id="user", data_schema=DATA_SCHEMA, errors=errors
+            step_id="user",
+            data_schema=DATA_SCHEMA,
+            errors=errors,
+            description_placeholders={
+                "storage_path": storage_dir,
+            },
         )

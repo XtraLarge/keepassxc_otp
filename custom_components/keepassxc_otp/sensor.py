@@ -106,7 +106,7 @@ async def async_setup_entry(
 ) -> None:
     """Set up KeePassXC OTP sensors from a config entry."""
     otp_secrets = config_entry.data.get(CONF_OTP_SECRETS, {})
-    
+
     if not otp_secrets:
         _LOGGER.warning("No OTP secrets found in config entry")
         return
@@ -121,7 +121,7 @@ async def async_setup_entry(
         KeePassXCOTPSensor(coordinator, entry_uuid)
         for entry_uuid in otp_secrets.keys()
     ]
-    
+
     _LOGGER.info(
         "Creating %d OTP sensor entities for KeePassXC OTP integration",
         len(entities)

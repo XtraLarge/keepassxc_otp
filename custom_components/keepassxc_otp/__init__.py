@@ -74,6 +74,12 @@ async def async_reload_entry(hass: HomeAssistant, entry: ConfigEntry) -> None:
     with new OTP secrets.
     """
     _LOGGER.info("Reloading KeePassXC OTP integration with updated configuration")
-    await async_unload_entry(hass, entry)
+    
+    # First, unload the entry to remove all entities
+    if not await async_unload_entry(hass, entry):
+        _LOGGER.error("Failed to unload entry during reload, aborting reload")
+        return
+    
+    # Then set it up again with the new configuration
     await async_setup_entry(hass, entry)
 

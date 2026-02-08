@@ -382,6 +382,7 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         - Automatically remove old entities
         - Create new entities from the updated database
         """
+        # Initialize errors dict for form validation error handling
         errors: dict[str, str] = {}
         
         # Ensure directory exists

@@ -440,12 +440,16 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         person_name = entry.data.get("person_name")
         person_id = entry.data.get("person_id")
         
-        # Create reconfigure schema without person selector (can't change person)
+        # Get saved filenames (or use defaults)
+        saved_database_file = entry.data.get("database_file", "database.kdbx")
+        saved_keyfile_file = entry.data.get("keyfile_file", "")
+        
+        # Create reconfigure schema with pre-filled filenames
         RECONFIGURE_SCHEMA = vol.Schema(
             {
-                vol.Required(CONF_DATABASE_FILE, default="database.kdbx"): cv.string,
+                vol.Required(CONF_DATABASE_FILE, default=saved_database_file): cv.string,
                 vol.Required(CONF_PASSWORD): cv.string,
-                vol.Optional(CONF_KEYFILE_FILE, default=""): cv.string,
+                vol.Optional(CONF_KEYFILE_FILE, default=saved_keyfile_file): cv.string,
             }
         )
         
@@ -460,13 +464,15 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                 
                 info = await validate_input(self.hass, user_input, person_name)
                 
-                # Update config entry (keep person info)
+                # Update config entry with new secrets AND save filenames
                 self.hass.config_entries.async_update_entry(
                     entry,
                     data={
                         "person_entity_id": person_entity_id,
                         "person_name": person_name,
                         "person_id": person_id,
+                        "database_file": user_input[CONF_DATABASE_FILE],
+                        "keyfile_file": user_input.get(CONF_KEYFILE_FILE, ""),
                         CONF_OTP_SECRETS: info[CONF_OTP_SECRETS],
                     }
                 )
@@ -548,13 +554,15 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                             # Pass person info to validation (for logging only)
                             info = await validate_input(self.hass, user_input, person_name)
                             
-                            # Store person entity ID along with OTP secrets
+                            # Store person entity ID, filenames, and OTP secrets
                             return self.async_create_entry(
                                 title=f"KeePassXC OTP ({person_name})",
                                 data={
                                     "person_entity_id": person_entity_id,
                                     "person_name": person_name,
                                     "person_id": person_id,
+                                    "database_file": user_input[CONF_DATABASE_FILE],
+                                    "keyfile_file": user_input.get(CONF_KEYFILE_FILE, ""),
                                     CONF_OTP_SECRETS: info[CONF_OTP_SECRETS],
                                 },
                             )

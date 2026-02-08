@@ -12,8 +12,8 @@
       }
     },
     "error": {
-      "database_not_found": "Database file not found in /config/keepassxc_otp/",
-      "keyfile_not_found": "Keyfile not found in /config/keepassxc_otp/",
+      "database_not_found": "Database file not found in storage directory",
+      "keyfile_not_found": "Keyfile not found in storage directory",
       "invalid_auth": "Invalid password or keyfile",
       "cannot_connect": "Failed to open database",
       "no_otp_entries": "No OTP entries found in database",

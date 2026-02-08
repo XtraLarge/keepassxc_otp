@@ -144,7 +144,7 @@ DATA_SCHEMA = vol.Schema(
     {
         vol.Required(CONF_DATABASE_FILE, default="database.kdbx"): cv.string,
         vol.Required(CONF_PASSWORD): cv.string,
-        vol.Optional(CONF_KEYFILE_FILE, default="keyfile.key"): cv.string,
+        vol.Optional(CONF_KEYFILE_FILE, default=""): cv.string,
     }
 )
 
@@ -162,8 +162,10 @@ async def validate_input(hass: HomeAssistant, data: dict[str, Any]) -> dict[str,
 
     # Validate filenames to prevent directory traversal
     db_filename = os.path.basename(db_filename)
-    if keyfile_filename:
+    if keyfile_filename and keyfile_filename.strip():
         keyfile_filename = os.path.basename(keyfile_filename)
+    else:
+        keyfile_filename = None
 
     # Construct full paths
     db_path = os.path.join(storage_dir, db_filename)

@@ -12,8 +12,8 @@
       }
     },
     "error": {
-      "database_not_found": "Datenbank-Datei nicht gefunden in /config/keepassxc_otp/",
-      "keyfile_not_found": "Keyfile nicht gefunden in /config/keepassxc_otp/",
+      "database_not_found": "Datenbank-Datei nicht im Speicherverzeichnis gefunden",
+      "keyfile_not_found": "Keyfile nicht im Speicherverzeichnis gefunden",
       "invalid_auth": "Ungültiges Passwort oder Keyfile",
       "cannot_connect": "Datenbank konnte nicht geöffnet werden",
       "no_otp_entries": "Keine OTP-Einträge in der Datenbank gefunden",

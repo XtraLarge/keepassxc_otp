@@ -1,0 +1,17 @@
+copy_token:
+  name: Copy OTP Token to Clipboard
+  description: Copy the current OTP token to the clipboard (requires browser clipboard support)
+  fields:
+    entity_id:
+      name: Entity
+      description: The OTP sensor entity to copy
+      required: true
+      example: "sensor.keepassxc_otp_gmail"
+      selector:
+        entity:
+          domain: sensor
+          integration: keepassxc_otp
+
+get_all_entities:
+  name: Get All OTP Entities
+  description: Returns a list of all KeePassXC OTP sensor entities

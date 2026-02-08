@@ -9,6 +9,7 @@ CONF_DATABASE_FILE = "database_file"
 CONF_PASSWORD = "password"
 CONF_KEYFILE_FILE = "keyfile_file"
 CONF_OTP_SECRETS = "otp_secrets"
+CONF_IMPORT_STATS = "import_stats"
 
 # Update interval
 UPDATE_INTERVAL = timedelta(seconds=10)

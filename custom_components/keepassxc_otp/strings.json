@@ -22,6 +22,10 @@
           "password": "Master password",
           "keyfile_file": "Keyfile filename (optional, e.g., keyfile.key)"
         }
+      },
+      "import_report": {
+        "title": "✅ Import Successful!",
+        "description": "## Import Report\n\n{import_stats}\n\nClick **Submit** to continue."
       }
     },
     "error": {
@@ -35,7 +39,8 @@
       "unknown": "Unexpected error occurred"
     },
     "abort": {
-      "reconfigure_successful": "Successfully reconfigured! All entities have been updated."
+      "reconfigure_successful": "Successfully reconfigured! All entities have been updated.",
+      "import_complete": "Import completed successfully!"
     }
   }
 }

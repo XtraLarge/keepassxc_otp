@@ -22,6 +22,10 @@
           "password": "Master-Passwort",
           "keyfile_file": "Keyfile-Dateiname (optional, z.B. keyfile.key)"
         }
+      },
+      "import_report": {
+        "title": "✅ Import erfolgreich!",
+        "description": "## Import-Bericht\n\n{import_stats}\n\nKlicken Sie auf **Senden**, um fortzufahren."
       }
     },
     "error": {
@@ -35,7 +39,8 @@
       "unknown": "Unerwarteter Fehler"
     },
     "abort": {
-      "reconfigure_successful": "Erfolgreich neu konfiguriert! Alle Entitäten wurden aktualisiert."
+      "reconfigure_successful": "Erfolgreich neu konfiguriert! Alle Entitäten wurden aktualisiert.",
+      "import_complete": "Import erfolgreich abgeschlossen!"
     }
   }
 }

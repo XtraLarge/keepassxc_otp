@@ -48,7 +48,7 @@ Each person in your Home Assistant setup can have their own KeePassXC database w
 #### Entity Naming
 
 Entities are identified by the person ID (extracted from the person entity):
-- Friendly name: `KeePassXC OTP: Gmail`, `KeePassXC OTP: GitHub`
+- Friendly name: `Gmail`, `GitHub` (clean and concise)
 - Entity ID: `sensor.keepassxc_otp_alice_gmail` (from person.alice)
 - Entity ID: `sensor.keepassxc_otp_bob_github` (from person.bob)
 - Attributes include `person_entity_id` and `person_name` for filtering
@@ -410,7 +410,7 @@ Jede Person in Ihrem Home Assistant Setup kann ihre eigene KeePassXC-Datenbank m
 #### Entitätsbenennung
 
 Entitäten werden durch die Personen-ID identifiziert (extrahiert aus der Personen-Entität):
-- Anzeigename: `KeePassXC OTP: Gmail`, `KeePassXC OTP: GitHub`
+- Anzeigename: `Gmail`, `GitHub` (sauber und prägnant)
 - Entitäts-ID: `sensor.keepassxc_otp_alice_gmail` (von person.alice)
 - Entitäts-ID: `sensor.keepassxc_otp_bob_github` (von person.bob)
 - Attribute enthalten `person_entity_id` und `person_name` für Filterung

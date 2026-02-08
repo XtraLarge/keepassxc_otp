@@ -167,8 +167,8 @@ class KeePassXCOTPSensor(CoordinatorEntity, SensorEntity):
         self._attr_unique_id = f"{person_id}_{entry_uuid}"
         self.entity_id = f"sensor.{DOMAIN}_{person_id}_{entity_name}"
         
-        # Clean entity name without person name
-        self._attr_name = f"KeePassXC OTP: {base_name}"
+        # Clean entity name without prefix
+        self._attr_name = base_name
             
         self._attr_icon = "mdi:key-chain"
         

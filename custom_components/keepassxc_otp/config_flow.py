@@ -149,9 +149,6 @@ def _extract_otp_from_entry(entry) -> dict[str, Any] | None:
     return _parse_otpauth_uri(otp_uri, entry.title)
 
 
-def _parse_otpauth_uri(uri: str, entry_name: str) -> dict[str, Any] | None:
-
-
 def _get_person_info(person_state) -> tuple[str, str]:
     """Extract person name and ID from person state.
     

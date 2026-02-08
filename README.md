@@ -16,6 +16,60 @@ A Home Assistant custom integration that reads OTP/TOTP entries from a KeePassXC
 - 🧹 **Auto-cleanup** - removes old sensors before each sync
 - 🌍 **Multi-language** - English and German translations
 - 🎨 **Home Assistant UI** - easy configuration through the UI
+- 👥 **Multi-user support** - each Home Assistant user can have their own OTP database
+
+### Multi-User Support
+
+Each Home Assistant user can configure their own KeePassXC database with separate OTP entries:
+
+#### How It Works
+
+- **User-Specific Directories**: Each user gets their own directory: `/config/keepassxc_otp/user_<user_id>/`
+- **Separate OTP Entries**: Users only see their own OTP tokens
+- **User-Prefixed Entity IDs**: Entities are named with user prefix for easy identification
+  - Example: `sensor.keepassxc_otp_alice_gmail` (Alice's Gmail OTP)
+  - Example: `sensor.keepassxc_otp_bob_github` (Bob's GitHub OTP)
+- **Privacy & Security**: Users cannot access other users' OTP tokens
+- **Admin View**: Administrators can optionally view all users' tokens in the Lovelace card
+
+#### Setup for Each User
+
+1. **Log in as your user** in Home Assistant
+2. **Add the integration** (Settings → Integrations → Add → KeePassXC OTP)
+3. **Place your database** in `/config/keepassxc_otp/user_<your_user_id>/`
+   - The directory will be created automatically when you add the integration
+   - Each user has their own isolated directory
+4. **Configure your database** with your password and optional keyfile
+
+#### Entity Naming
+
+Entities include your username for easy identification:
+- Friendly name: `Gmail (Alice)`, `GitHub (Bob)`
+- Entity ID: `sensor.keepassxc_otp_alice_gmail`, `sensor.keepassxc_otp_bob_github`
+- Attributes include `user_id` and `user_name` for filtering and permissions
+
+#### Lovelace Card Filtering
+
+The custom Lovelace card automatically filters entities:
+- **Users** see only their own OTP tokens
+- **Admins** can see all tokens by setting `show_all_users: true`
+
+```yaml
+# Regular user view (sees only own tokens)
+type: custom:keepassxc-otp-card
+title: 🔐 My OTP Tokens
+
+# Admin view (sees all users' tokens)
+type: custom:keepassxc-otp-card
+title: 🔐 All OTP Tokens
+show_all_users: true
+```
+
+#### Permission Validation
+
+- Config flow validates user ownership during setup and reconfiguration
+- Copy service logs attempts to access other users' tokens
+- Admins can manage all integrations, regular users can only manage their own
 
 ### Installation
 
@@ -42,9 +96,23 @@ A Home Assistant custom integration that reads OTP/TOTP entries from a KeePassXC
 
 ### Configuration
 
+#### Single User or Shared Mode (Legacy)
+
+For backward compatibility, you can still use the shared directory:
+
 1. **Copy your files** to `/config/keepassxc_otp/`:
    - Your KeePassXC database file (e.g., `database.kdbx`)
    - Your keyfile (optional, e.g., `keyfile.key`)
+
+#### Multi-User Mode (Recommended)
+
+For user-specific OTP management:
+
+1. **Log in as your user** in Home Assistant
+2. **Add the integration** (Settings → Devices & Services → Add Integration → KeePassXC OTP)
+3. **Copy your files** to the user-specific directory shown in the configuration form:
+   - The directory will be `/config/keepassxc_otp/user_<your_user_id>/`
+   - This directory is automatically created when you start the configuration
 
    You can copy files via:
    - **File Editor** add-on in Home Assistant
@@ -52,22 +120,19 @@ A Home Assistant custom integration that reads OTP/TOTP entries from a KeePassXC
    - **Samba Share** add-on
    - Any file manager with access to your Home Assistant config directory
 
-2. **Add the integration:**
-   - Go to **Settings** → **Devices & Services**
-   - Click **+ ADD INTEGRATION**
-   - Search for **KeePassXC OTP**
-
-3. **Enter configuration:**
+4. **Configure the integration:**
    - **Database filename**: `database.kdbx` (or your filename)
    - **Master password**: Your KeePassXC password
    - **Keyfile filename**: `keyfile.key` (optional, or your keyfile name)
 
-4. **Files are deleted after import** for security
+5. **Files are deleted after import** for security
    - All OTP secrets are extracted and stored encrypted in Home Assistant
-   - Original files are securely deleted from `/config/keepassxc_otp/`
+   - Original files are securely deleted from the storage directory
    - To update: Use the reconfigure feature (see below)
 
-⚠️ **Important:** Files in `/config/keepassxc_otp/` will be permanently deleted after successful import!
+⚠️ **Important:** Files in the storage directory will be permanently deleted after successful import!
+
+**Note:** In multi-user mode, the configuration form shows the exact path where you should place your files.
 
 The integration will:
 - Validate your credentials
@@ -297,6 +362,60 @@ Eine Home Assistant Custom Integration, die OTP/TOTP-Einträge aus einer KeePass
 - 🧹 **Auto-Cleanup** - entfernt alte Sensoren vor jeder Synchronisierung
 - 🌍 **Mehrsprachig** - Englische und deutsche Übersetzungen
 - 🎨 **Home Assistant UI** - einfache Konfiguration über die Benutzeroberfläche
+- 👥 **Mehrbenutzer-Unterstützung** - jeder Home Assistant Benutzer kann seine eigene OTP-Datenbank haben
+
+### Mehrbenutzer-Unterstützung
+
+Jeder Home Assistant Benutzer kann seine eigene KeePassXC-Datenbank mit separaten OTP-Einträgen konfigurieren:
+
+#### Funktionsweise
+
+- **Benutzerspezifische Verzeichnisse**: Jeder Benutzer erhält sein eigenes Verzeichnis: `/config/keepassxc_otp/user_<benutzer_id>/`
+- **Getrennte OTP-Einträge**: Benutzer sehen nur ihre eigenen OTP-Token
+- **Benutzerpräfix in Entitäts-IDs**: Entitäten werden mit Benutzerpräfix benannt zur einfachen Identifizierung
+  - Beispiel: `sensor.keepassxc_otp_alice_gmail` (Alices Gmail OTP)
+  - Beispiel: `sensor.keepassxc_otp_bob_github` (Bobs GitHub OTP)
+- **Datenschutz & Sicherheit**: Benutzer können nicht auf OTP-Token anderer Benutzer zugreifen
+- **Admin-Ansicht**: Administratoren können optional alle Benutzer-Token in der Lovelace-Karte anzeigen
+
+#### Einrichtung für jeden Benutzer
+
+1. **Melden Sie sich als Ihr Benutzer** in Home Assistant an
+2. **Fügen Sie die Integration hinzu** (Einstellungen → Integrationen → Hinzufügen → KeePassXC OTP)
+3. **Platzieren Sie Ihre Datenbank** in `/config/keepassxc_otp/user_<ihre_benutzer_id>/`
+   - Das Verzeichnis wird automatisch erstellt, wenn Sie die Integration hinzufügen
+   - Jeder Benutzer hat sein eigenes isoliertes Verzeichnis
+4. **Konfigurieren Sie Ihre Datenbank** mit Ihrem Passwort und optionaler Schlüsseldatei
+
+#### Entitätsbenennung
+
+Entitäten enthalten Ihren Benutzernamen zur einfachen Identifizierung:
+- Anzeigename: `Gmail (Alice)`, `GitHub (Bob)`
+- Entitäts-ID: `sensor.keepassxc_otp_alice_gmail`, `sensor.keepassxc_otp_bob_github`
+- Attribute enthalten `user_id` und `user_name` für Filterung und Berechtigungen
+
+#### Lovelace-Karten-Filterung
+
+Die benutzerdefinierte Lovelace-Karte filtert Entitäten automatisch:
+- **Benutzer** sehen nur ihre eigenen OTP-Token
+- **Admins** können alle Token sehen durch `show_all_users: true`
+
+```yaml
+# Normale Benutzeransicht (sieht nur eigene Token)
+type: custom:keepassxc-otp-card
+title: 🔐 Meine OTP-Token
+
+# Admin-Ansicht (sieht alle Benutzer-Token)
+type: custom:keepassxc-otp-card
+title: 🔐 Alle OTP-Token
+show_all_users: true
+```
+
+#### Berechtigungsvalidierung
+
+- Konfigurationsablauf validiert Benutzerbesitz während Einrichtung und Neukonfiguration
+- Kopierdienst protokolliert Versuche auf Token anderer Benutzer zuzugreifen
+- Admins können alle Integrationen verwalten, normale Benutzer nur ihre eigenen
 
 ### Installation
 
@@ -323,9 +442,23 @@ Eine Home Assistant Custom Integration, die OTP/TOTP-Einträge aus einer KeePass
 
 ### Konfiguration
 
+#### Einzelbenutzer oder geteilter Modus (Legacy)
+
+Für Rückwärtskompatibilität können Sie weiterhin das geteilte Verzeichnis verwenden:
+
 1. **Kopieren Sie Ihre Dateien** nach `/config/keepassxc_otp/`:
    - Ihre KeePassXC-Datenbankdatei (z.B. `database.kdbx`)
    - Ihre Schlüsseldatei (optional, z.B. `keyfile.key`)
+
+#### Mehrbenutzer-Modus (Empfohlen)
+
+Für benutzerspezifische OTP-Verwaltung:
+
+1. **Melden Sie sich als Ihr Benutzer** in Home Assistant an
+2. **Fügen Sie die Integration hinzu** (Einstellungen → Geräte & Dienste → Integration hinzufügen → KeePassXC OTP)
+3. **Kopieren Sie Ihre Dateien** in das benutzerspezifische Verzeichnis, das im Konfigurationsformular angezeigt wird:
+   - Das Verzeichnis wird `/config/keepassxc_otp/user_<ihre_benutzer_id>/` sein
+   - Dieses Verzeichnis wird automatisch erstellt, wenn Sie die Konfiguration starten
 
    Sie können Dateien kopieren über:
    - **File Editor** Add-on in Home Assistant
@@ -333,22 +466,19 @@ Eine Home Assistant Custom Integration, die OTP/TOTP-Einträge aus einer KeePass
    - **Samba Share** Add-on
    - Jeden Dateimanager mit Zugriff auf Ihr Home Assistant Config-Verzeichnis
 
-2. **Fügen Sie die Integration hinzu:**
-   - Gehen Sie zu **Einstellungen** → **Geräte & Dienste**
-   - Klicken Sie auf **+ INTEGRATION HINZUFÜGEN**
-   - Suchen Sie nach **KeePassXC OTP**
-
-3. **Geben Sie die Konfiguration ein:**
+4. **Konfigurieren Sie die Integration:**
    - **Datenbank-Dateiname**: `database.kdbx` (oder Ihr Dateiname)
    - **Master-Passwort**: Ihr KeePassXC-Passwort
    - **Keyfile-Dateiname**: `keyfile.key` (optional, oder Ihr Keyfile-Name)
 
-4. **Dateien werden nach dem Import gelöscht** aus Sicherheitsgründen
+5. **Dateien werden nach dem Import gelöscht** aus Sicherheitsgründen
    - Alle OTP-Geheimnisse werden extrahiert und verschlüsselt in Home Assistant gespeichert
-   - Original-Dateien werden sicher aus `/config/keepassxc_otp/` gelöscht
+   - Original-Dateien werden sicher aus dem Speicherverzeichnis gelöscht
    - Zum Aktualisieren: Verwenden Sie die Neukonfigurations-Funktion (siehe unten)
 
-⚠️ **Wichtig:** Dateien in `/config/keepassxc_otp/` werden nach erfolgreichem Import dauerhaft gelöscht!
+⚠️ **Wichtig:** Dateien im Speicherverzeichnis werden nach erfolgreichem Import dauerhaft gelöscht!
+
+**Hinweis:** Im Mehrbenutzer-Modus zeigt das Konfigurationsformular den genauen Pfad, wo Sie Ihre Dateien platzieren sollten.
 
 Die Integration wird:
 - Ihre Anmeldeinformationen validieren

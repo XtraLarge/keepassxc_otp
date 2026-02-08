@@ -20,6 +20,7 @@ import homeassistant.helpers.config_validation as cv
 
 from .const import (
     CONF_DATABASE_FILE,
+    CONF_IMPORT_STATS,
     CONF_KEYFILE_FILE,
     CONF_OTP_SECRETS,
     CONF_PASSWORD,
@@ -106,7 +107,12 @@ def _has_references(entry) -> bool:
 
 
 def _extract_otp_from_entry(entry) -> dict[str, Any] | None:
-    """Extract OTP data from a KeePassXC entry."""
+    """Extract OTP data from a KeePassXC entry.
+    
+    Returns:
+        dict with OTP data, or None if entry should be skipped
+        On error, returns dict with "error" key containing the skip reason
+    """
     
     # Skip entries with references - they don't contain actual OTP data
     if _has_references(entry):
@@ -114,7 +120,7 @@ def _extract_otp_from_entry(entry) -> dict[str, Any] | None:
             "Skipping entry '%s' - contains field references (not an actual OTP entry)",
             entry.title
         )
-        return None
+        return {"error": "contains_field_references"}
     
     otp_uri = None
 
@@ -140,15 +146,41 @@ def _extract_otp_from_entry(entry) -> dict[str, Any] | None:
     if not otp_uri:
         return None
 
-    # Parse otpauth:// URI
+    # Parse otpauth:// URI or try to construct one from simple key format
     if not otp_uri.startswith("otpauth://"):
-        # Try to construct URI if it's just a secret
-        _LOGGER.debug("Entry %s has OTP data but not in URI format", entry.title)
-        return None
+        # Try to construct URI if it's a simple key format
+        _LOGGER.debug("Entry %s has OTP data but not in URI format, attempting to parse", entry.title)
+        
+        import re
+        # Try to extract key from various formats:
+        # - "key=JBSWY3DPEHPK3PXP"
+        # - "JBSWY3DPEHPK3PXP" (plain base32)
+        key_match = re.search(r'key\s*=\s*([A-Z2-7]+)', otp_uri, re.IGNORECASE)
+        
+        if key_match:
+            secret = key_match.group(1).upper()
+        elif re.match(r'^[A-Z2-7]+=*$', otp_uri.strip()):
+            # Looks like a plain base32 secret
+            secret = otp_uri.strip().upper()
+        else:
+            _LOGGER.debug("Entry %s: OTP data is not in a recognized format", entry.title)
+            return {"error": "simple_key_not_supported"}
+        
+        # Validate it's a valid base32 string (length should be multiple of 8 when padded)
+        # Base32 uses A-Z and 2-7
+        if not secret or len(secret) < 16:  # Minimum reasonable length for OTP secret
+            _LOGGER.debug("Entry %s: Secret too short or empty", entry.title)
+            return {"error": "no_secret_found"}
+        
+        # Construct a full otpauth URI with defaults
+        # Use entry title as the account name, sanitized
+        account_name = entry.title.replace(":", "_").replace("/", "_")
+        otp_uri = f"otpauth://totp/{account_name}?secret={secret}&period=30&digits=6&algorithm=SHA1"
+        _LOGGER.info("Constructed OTP URI from simple key format for entry: %s", entry.title)
 
     otp_data = _parse_otpauth_uri(otp_uri, entry.title)
     if not otp_data:
-        return None
+        return {"error": "invalid_uri_format"}
     
     # Extract URL from entry (if available)
     entry_url = None
@@ -359,8 +391,31 @@ async def validate_input(hass: HomeAssistant, data: dict[str, Any], person_name:
         otp_secrets = {}
         seen_secret_hashes = set()  # Track secret hashes to avoid duplicates
         
+        # Track import statistics
+        import_stats = {
+            "imported": [],  # List of successfully imported entry names
+            "skipped": [],   # List of dicts with {"name": str, "reason": str}
+            "total_entries": len(kp.entries),
+        }
+        
         for entry in kp.entries:
             otp_data = _extract_otp_from_entry(entry)
+            
+            # Check if entry was skipped with a reason
+            if otp_data and "error" in otp_data:
+                reason_map = {
+                    "contains_field_references": "Contains field references",
+                    "simple_key_not_supported": "Simple key format not supported",
+                    "no_secret_found": "No secret found",
+                    "invalid_uri_format": "Invalid URI format",
+                }
+                reason = reason_map.get(otp_data["error"], "Unknown error")
+                import_stats["skipped"].append({
+                    "name": entry.title,
+                    "reason": reason
+                })
+                continue
+            
             if otp_data:
                 secret = otp_data["secret"]
                 
@@ -373,6 +428,10 @@ async def validate_input(hass: HomeAssistant, data: dict[str, Any], person_name:
                         "Skipping duplicate OTP secret in entry '%s' - already extracted",
                         entry.title
                     )
+                    import_stats["skipped"].append({
+                        "name": entry.title,
+                        "reason": "Duplicate"
+                    })
                     continue
                 
                 seen_secret_hashes.add(secret_hash)
@@ -389,6 +448,10 @@ async def validate_input(hass: HomeAssistant, data: dict[str, Any], person_name:
                     "url": otp_data.get("url"),
                     "username": otp_data.get("username"),
                 }
+                
+                # Track successful import
+                import_stats["imported"].append(entry.title)
+                
                 _LOGGER.debug(
                     "Extracted OTP for entry: %s (UUID: %s)",
                     entry.title,
@@ -397,8 +460,9 @@ async def validate_input(hass: HomeAssistant, data: dict[str, Any], person_name:
 
         _LOGGER.info(
             "Successfully extracted %d unique OTP secrets. "
-            "Skipped entries with references and duplicates.",
-            len(otp_secrets)
+            "Skipped %d entries.",
+            len(otp_secrets),
+            len(import_stats["skipped"])
         )
         
         _LOGGER.info("Successfully validated database for person %s with %d OTP entries", person_name, len(otp_secrets))
@@ -429,6 +493,7 @@ async def validate_input(hass: HomeAssistant, data: dict[str, Any], person_name:
     return {
         "title": "KeePassXC OTP",
         CONF_OTP_SECRETS: otp_secrets,
+        "import_stats": import_stats,
     }
 
 
@@ -436,6 +501,67 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
     """Handle a config flow for KeePassXC OTP."""
 
     VERSION = 2
+
+    def __init__(self):
+        """Initialize the config flow."""
+        super().__init__()
+        self._import_stats = None
+        self._pending_data = None
+
+    def _format_import_stats(self, import_stats: dict[str, Any]) -> str:
+        """Format import statistics into a readable string."""
+        lines = []
+        
+        # Imported entries
+        imported_count = len(import_stats.get("imported", []))
+        if imported_count > 0:
+            lines.append(f"✅ **Imported: {imported_count} entries**")
+            for name in import_stats["imported"][:10]:  # Limit to first 10
+                lines.append(f"  - {name}")
+            if imported_count > 10:
+                lines.append(f"  - ... and {imported_count - 10} more")
+        
+        # Skipped entries
+        skipped_count = len(import_stats.get("skipped", []))
+        if skipped_count > 0:
+            lines.append(f"\n⏭️ **Skipped: {skipped_count} entries**")
+            for item in import_stats["skipped"][:10]:  # Limit to first 10
+                lines.append(f"  - \"{item['name']}\" ({item['reason']})")
+            if skipped_count > 10:
+                lines.append(f"  - ... and {skipped_count - 10} more")
+        
+        # Total
+        total_count = import_stats.get("total_entries", 0)
+        lines.append(f"\n📊 **Total entries in database: {total_count}**")
+        
+        return "\n".join(lines)
+
+    async def async_step_import_report(
+        self, user_input: dict[str, Any] | None = None
+    ) -> FlowResult:
+        """Show import report after successful import."""
+        if user_input is not None:
+            # User clicked OK
+            # For reconfigure: abort with success message
+            if self.context.get("reconfigure"):
+                return self.async_abort(reason="reconfigure_successful")
+            # For initial setup: create the entry
+            else:
+                return self.async_create_entry(
+                    title=self._pending_data["title"],
+                    data=self._pending_data["data"],
+                )
+        
+        # Get import stats
+        import_stats = self._import_stats or {}
+        formatted_stats = self._format_import_stats(import_stats)
+        
+        return self.async_show_form(
+            step_id="import_report",
+            description_placeholders={
+                "import_stats": formatted_stats,
+            },
+        )
 
     async def async_step_reconfigure(
         self, user_input: dict[str, Any] | None = None
@@ -473,6 +599,10 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                 
                 info = await validate_input(self.hass, user_input, person_name)
                 
+                # Store import stats for the import report
+                self._import_stats = info.get("import_stats", {})
+                self.context["reconfigure"] = True
+                
                 # Update config entry with new secrets AND save filenames
                 self.hass.config_entries.async_update_entry(
                     entry,
@@ -493,7 +623,9 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                 )
                 
                 await self.hass.config_entries.async_reload(entry.entry_id)
-                return self.async_abort(reason="reconfigure_successful")
+                
+                # Show import report instead of immediately aborting
+                return await self.async_step_import_report()
                 
             except ValueError as err:
                 error_str = str(err)
@@ -563,10 +695,11 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                             # Pass person info to validation (for logging only)
                             info = await validate_input(self.hass, user_input, person_name)
                             
-                            # Store person entity ID, filenames, and OTP secrets
-                            return self.async_create_entry(
-                                title=f"KeePassXC OTP ({person_name})",
-                                data={
+                            # Store import stats and pending data for the import report
+                            self._import_stats = info.get("import_stats", {})
+                            self._pending_data = {
+                                "title": f"KeePassXC OTP ({person_name})",
+                                "data": {
                                     "person_entity_id": person_entity_id,
                                     "person_name": person_name,
                                     "person_id": person_id,
@@ -574,7 +707,10 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                                     "keyfile_file": user_input.get(CONF_KEYFILE_FILE, ""),
                                     CONF_OTP_SECRETS: info[CONF_OTP_SECRETS],
                                 },
-                            )
+                            }
+                            
+                            # Show import report before creating the entry
+                            return await self.async_step_import_report()
                         except ValueError as err:
                             error_str = str(err)
                             if "database_not_found" in error_str:

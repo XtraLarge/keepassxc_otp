@@ -34,8 +34,6 @@ class KeePassXCOTPCard extends HTMLElement {
     if (!this._hass) return;
     
     const entities = [];
-    const currentUserId = this._hass.user?.id;
-    const isAdmin = this._hass.user?.is_admin || false;
     const personEntityId = this._config.person_entity_id;
     
     Object.keys(this._hass.states).forEach(entity_id => {

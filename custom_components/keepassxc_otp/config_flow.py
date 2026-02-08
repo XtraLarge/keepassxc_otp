@@ -148,6 +148,39 @@ def _extract_otp_from_entry(entry) -> dict[str, Any] | None:
 
 
 def _parse_otpauth_uri(uri: str, entry_name: str) -> dict[str, Any] | None:
+
+
+def _get_person_info(person_state) -> tuple[str, str]:
+    """Extract person name and ID from person state.
+    
+    Args:
+        person_state: The person entity state object
+        
+    Returns:
+        Tuple of (person_name, person_id)
+    """
+    person_name = person_state.attributes.get("friendly_name") or person_state.name
+    person_id = person_state.entity_id.split(".")[1]  # Extract ID from person.alice -> alice
+    return person_name, person_id
+
+
+def _sanitize_entity_name(name: str) -> str:
+    """Sanitize a name for use in entity ID.
+    
+    Args:
+        name: The name to sanitize
+        
+    Returns:
+        Sanitized name suitable for entity IDs
+    """
+    # Convert to lowercase and replace spaces/hyphens with underscores
+    entity_name = name.lower().replace(" ", "_").replace("-", "_")
+    # Remove special characters, keep only alphanumeric and underscores
+    entity_name = "".join(c for c in entity_name if c.isalnum() or c == "_")
+    return entity_name
+
+
+def _parse_otpauth_uri(uri: str, entry_name: str) -> dict[str, Any] | None:
     """Parse otpauth:// URI and extract OTP parameters."""
     try:
         parsed = urlparse(uri)
@@ -479,62 +512,68 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             if not person_state:
                 errors["person_entity_id"] = "person_not_found"
             else:
-                # Get person name for directory
-                person_name = person_state.attributes.get("friendly_name") or person_state.name
-                person_id = person_entity_id.split(".")[1]  # Extract ID from person.alice -> alice
-                
-                # Check if this person already has an integration instance
-                existing_entries = self._async_current_entries()
-                for entry in existing_entries:
-                    if entry.data.get("person_entity_id") == person_entity_id:
-                        errors["base"] = "person_already_configured"
-                        break
-                
-                if not errors:
-                    # Create person-specific directory
-                    storage_dir = self.hass.config.path(f"keepassxc_otp/{person_name}")
-                    await self.hass.async_add_executor_job(_ensure_directory, storage_dir)
+                try:
+                    # Get person name and ID using helper function
+                    person_name, person_id = _get_person_info(person_state)
+                except (IndexError, AttributeError) as err:
+                    _LOGGER.error("Invalid person entity format: %s - %s", person_entity_id, err)
+                    errors["person_entity_id"] = "person_not_found"
+                else:
+                    # Check if this person already has an integration instance
+                    existing_entries = self._async_current_entries()
+                    for entry in existing_entries:
+                        if entry.data.get("person_entity_id") == person_entity_id:
+                            errors["base"] = "person_already_configured"
+                            break
                     
-                    try:
-                        # Pass person info to validation
-                        info = await validate_input(self.hass, user_input, person_name)
+                    if not errors:
+                        # Create person-specific directory
+                        storage_dir = self.hass.config.path(f"keepassxc_otp/{person_name}")
+                        await self.hass.async_add_executor_job(_ensure_directory, storage_dir)
                         
-                        # Store person entity ID along with OTP secrets
-                        return self.async_create_entry(
-                            title=f"KeePassXC OTP ({person_name})",
-                            data={
-                                "person_entity_id": person_entity_id,
-                                "person_name": person_name,
-                                "person_id": person_id,
-                                CONF_OTP_SECRETS: info[CONF_OTP_SECRETS],
-                            },
-                        )
-                    except ValueError as err:
-                        error_str = str(err)
-                        if "database_not_found" in error_str:
-                            errors["base"] = "database_not_found"
-                        elif "keyfile_not_found" in error_str:
-                            errors["base"] = "keyfile_not_found"
-                        elif "invalid_auth" in error_str:
-                            errors["base"] = "invalid_auth"
-                        elif "cannot_connect" in error_str:
-                            errors["base"] = "cannot_connect"
-                        elif "no_otp_entries" in error_str:
-                            errors["base"] = "no_otp_entries"
-                        else:
+                        try:
+                            # Pass person info to validation
+                            info = await validate_input(self.hass, user_input, person_name)
+                            
+                            # Store person entity ID along with OTP secrets
+                            return self.async_create_entry(
+                                title=f"KeePassXC OTP ({person_name})",
+                                data={
+                                    "person_entity_id": person_entity_id,
+                                    "person_name": person_name,
+                                    "person_id": person_id,
+                                    CONF_OTP_SECRETS: info[CONF_OTP_SECRETS],
+                                },
+                            )
+                        except ValueError as err:
+                            error_str = str(err)
+                            if "database_not_found" in error_str:
+                                errors["base"] = "database_not_found"
+                            elif "keyfile_not_found" in error_str:
+                                errors["base"] = "keyfile_not_found"
+                            elif "invalid_auth" in error_str:
+                                errors["base"] = "invalid_auth"
+                            elif "cannot_connect" in error_str:
+                                errors["base"] = "cannot_connect"
+                            elif "no_otp_entries" in error_str:
+                                errors["base"] = "no_otp_entries"
+                            else:
+                                errors["base"] = "unknown"
+                        except Exception:
+                            _LOGGER.exception("Unexpected exception")
                             errors["base"] = "unknown"
-                    except Exception:
-                        _LOGGER.exception("Unexpected exception")
-                        errors["base"] = "unknown"
 
         # Get description with dynamic path if person selected
         description_placeholders = {}
         if user_input and user_input.get("person_entity_id"):
             person_state = self.hass.states.get(user_input["person_entity_id"])
             if person_state:
-                person_name = person_state.attributes.get("friendly_name") or person_state.name
-                storage_dir = self.hass.config.path(f"keepassxc_otp/{person_name}")
-                description_placeholders["storage_path"] = storage_dir
+                try:
+                    person_name, _ = _get_person_info(person_state)
+                    storage_dir = self.hass.config.path(f"keepassxc_otp/{person_name}")
+                    description_placeholders["storage_path"] = storage_dir
+                except (IndexError, AttributeError):
+                    pass  # Don't show path if person info is invalid
 
         # Show form with person selector
         return self.async_show_form(

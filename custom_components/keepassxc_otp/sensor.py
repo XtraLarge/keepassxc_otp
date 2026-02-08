@@ -32,6 +32,22 @@ from .const import (
 _LOGGER = logging.getLogger(__name__)
 
 
+def _sanitize_entity_name(name: str) -> str:
+    """Sanitize a name for use in entity ID.
+    
+    Args:
+        name: The name to sanitize
+        
+    Returns:
+        Sanitized name suitable for entity IDs
+    """
+    # Convert to lowercase and replace spaces/hyphens with underscores
+    entity_name = name.lower().replace(" ", "_").replace("-", "_")
+    # Remove special characters, keep only alphanumeric and underscores
+    entity_name = "".join(c for c in entity_name if c.isalnum() or c == "_")
+    return entity_name
+
+
 class KeePassXCOTPCoordinator(DataUpdateCoordinator):
     """Class to manage OTP code generation."""
 
@@ -159,15 +175,13 @@ class KeePassXCOTPSensor(CoordinatorEntity, SensorEntity):
         otp_data = coordinator.data.get(entry_uuid, {})
         
         # Create person-specific entity ID using person ID (from person.alice -> alice)
-        entity_name = otp_data.get("name", "unknown_otp_entry").lower().replace(" ", "_").replace("-", "_")
-        # Remove special characters
-        entity_name = "".join(c for c in entity_name if c.isalnum() or c == "_")
+        base_name = otp_data.get("name", "unknown_otp_entry")
+        entity_name = _sanitize_entity_name(base_name)
         
         self._attr_unique_id = f"{person_id}_{entry_uuid}"
         self.entity_id = f"sensor.{DOMAIN}_{person_id}_{entity_name}"
         
         # Include person name in friendly name
-        base_name = otp_data.get("name") or "Unknown OTP Entry"
         self._attr_name = f"{base_name} ({person_name})"
             
         self._attr_icon = "mdi:key-chain"

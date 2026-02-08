@@ -3,7 +3,20 @@
     "step": {
       "user": {
         "title": "KeePassXC OTP Setup",
-        "description": "Please place your KeePassXC database and keyfile in:\n\n**{storage_path}/**\n\nThen enter the filenames below.\n\n⚠️ **Warning:** Files will be securely deleted after import!",
+        "description": "Select a person and place their KeePassXC database in:\n\n**{storage_path}/**\n\nThen enter the filenames below.\n\n⚠️ **Warning:** Files will be securely deleted after import!",
+        "data": {
+          "person_entity_id": "Person",
+          "database_file": "Database filename (e.g., database.kdbx)",
+          "password": "Master password",
+          "keyfile_file": "Keyfile filename (optional, e.g., keyfile.key)"
+        },
+        "data_description": {
+          "person_entity_id": "Select which person this OTP database belongs to"
+        }
+      },
+      "reconfigure": {
+        "title": "Reconfigure KeePassXC OTP for {person_name}",
+        "description": "Update OTP entries for **{person_name}**.\n\nPlace the updated database in:\n\n**{storage_path}/**\n\n⚠️ **This will:**\n- Remove all existing OTP entities for this person\n- Extract new OTP entries\n- Create new entities\n- Securely delete the uploaded files",
         "data": {
           "database_file": "Database filename (e.g., database.kdbx)",
           "password": "Master password",
@@ -12,6 +25,8 @@
       }
     },
     "error": {
+      "person_not_found": "Selected person not found",
+      "person_already_configured": "This person already has a KeePassXC OTP integration configured",
       "database_not_found": "Database file not found in storage directory",
       "keyfile_not_found": "Keyfile not found in storage directory",
       "invalid_auth": "Invalid password or keyfile",
@@ -20,9 +35,6 @@
       "unknown": "Unexpected error occurred"
     },
     "abort": {
-      "already_configured": "This KeePassXC database is already configured",
-      "no_user": "No user context available. Please log in first.",
-      "not_authorized": "You are not authorized to modify this integration instance.",
       "reconfigure_successful": "Successfully reconfigured! All entities have been updated."
     }
   }

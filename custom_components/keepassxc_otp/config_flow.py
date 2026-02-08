@@ -15,6 +15,7 @@ import voluptuous as vol
 from homeassistant import config_entries
 from homeassistant.core import HomeAssistant
 from homeassistant.data_entry_flow import FlowResult
+from homeassistant.helpers import selector
 import homeassistant.helpers.config_validation as cv
 
 from .const import (
@@ -199,6 +200,9 @@ def _parse_otpauth_uri(uri: str, entry_name: str) -> dict[str, Any] | None:
 
 DATA_SCHEMA = vol.Schema(
     {
+        vol.Required("person_entity_id"): selector.EntitySelector(
+            selector.EntitySelectorConfig(domain="person")
+        ),
         vol.Required(CONF_DATABASE_FILE, default="database.kdbx"): cv.string,
         vol.Required(CONF_PASSWORD): cv.string,
         vol.Optional(CONF_KEYFILE_FILE, default=""): cv.string,
@@ -206,7 +210,7 @@ DATA_SCHEMA = vol.Schema(
 )
 
 
-async def validate_input(hass: HomeAssistant, data: dict[str, Any], user_id: str | None = None) -> dict[str, Any]:
+async def validate_input(hass: HomeAssistant, data: dict[str, Any], person_name: str) -> dict[str, Any]:
     """Validate the user input allows us to connect.
 
     Data has the keys from DATA_SCHEMA with values provided by the user.
@@ -214,13 +218,10 @@ async def validate_input(hass: HomeAssistant, data: dict[str, Any], user_id: str
     Args:
         hass: Home Assistant instance
         data: User input data
-        user_id: ID of the user configuring the integration (optional for backward compatibility)
+        person_name: Name of the person (friendly name from person entity)
     """
-    # Use user-specific directory if user_id is provided, otherwise use shared directory
-    if user_id:
-        storage_dir = hass.config.path(f"keepassxc_otp/user_{user_id}")
-    else:
-        storage_dir = hass.config.path("keepassxc_otp")
+    # Use person-specific directory (based on person's friendly name)
+    storage_dir = hass.config.path(f"keepassxc_otp/{person_name}")
 
     db_filename = data[CONF_DATABASE_FILE]
     password = data[CONF_PASSWORD]
@@ -251,14 +252,12 @@ async def validate_input(hass: HomeAssistant, data: dict[str, Any], user_id: str
 
     # Check if database file exists
     if not await hass.async_add_executor_job(os.path.exists, db_path):
-        if user_id:
-            _LOGGER.error("Database not found for user %s at %s", user_id, db_path)
+        _LOGGER.error("Database not found for person %s at %s", person_name, db_path)
         raise ValueError("database_not_found")
 
     # Check if keyfile exists (if provided)
     if keyfile_path and not await hass.async_add_executor_job(os.path.exists, keyfile_path):
-        if user_id:
-            _LOGGER.error("Keyfile not found for user %s at %s", user_id, keyfile_path)
+        _LOGGER.error("Keyfile not found for person %s at %s", person_name, keyfile_path)
         raise ValueError("keyfile_not_found")
 
     # Read files
@@ -350,8 +349,7 @@ async def validate_input(hass: HomeAssistant, data: dict[str, Any], user_id: str
             len(otp_secrets)
         )
         
-        if user_id:
-            _LOGGER.info("Successfully validated database for user %s", user_id)
+        _LOGGER.info("Successfully validated database for person %s with %d OTP entries", person_name, len(otp_secrets))
 
         if not otp_secrets:
             _LOGGER.warning("No OTP entries found in the database")
@@ -385,74 +383,58 @@ async def validate_input(hass: HomeAssistant, data: dict[str, Any], user_id: str
 class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
     """Handle a config flow for KeePassXC OTP."""
 
-    VERSION = 1
+    VERSION = 2
 
     async def async_step_reconfigure(
         self, user_input: dict[str, Any] | None = None
     ) -> FlowResult:
-        """Handle reconfiguration of the integration.
-        
-        This allows users to:
-        - Upload a new database file
-        - Re-extract OTP secrets
-        - Automatically remove old entities
-        - Create new entities from the updated database
-        """
-        # Initialize errors dict for form validation error handling
+        """Handle reconfiguration of the integration."""
         errors: dict[str, str] = {}
         
-        # Get the existing config entry being reconfigured
+        # Get the existing config entry
         entry = self.hass.config_entries.async_get_entry(self.context["entry_id"])
-        user_id = entry.data.get("user_id")
+        person_entity_id = entry.data.get("person_entity_id")
+        person_name = entry.data.get("person_name")
+        person_id = entry.data.get("person_id")
         
-        # Verify user can reconfigure this entry
-        current_user_id = self.context.get("user_id")
-        if user_id and current_user_id != user_id:
-            # Check if user is admin
-            user = await self.hass.auth.async_get_user(current_user_id)
-            if not user or not user.is_admin:
-                _LOGGER.warning(
-                    "User %s attempted to reconfigure entry belonging to %s",
-                    current_user_id,
-                    user_id
-                )
-                return self.async_abort(reason="not_authorized")
+        # Create reconfigure schema without person selector (can't change person)
+        RECONFIGURE_SCHEMA = vol.Schema(
+            {
+                vol.Required(CONF_DATABASE_FILE, default="database.kdbx"): cv.string,
+                vol.Required(CONF_PASSWORD): cv.string,
+                vol.Optional(CONF_KEYFILE_FILE, default=""): cv.string,
+            }
+        )
         
-        # Create user-specific directory or use shared directory
-        if user_id:
-            storage_dir = self.hass.config.path(f"keepassxc_otp/user_{user_id}")
-        else:
-            storage_dir = self.hass.config.path("keepassxc_otp")
+        # Create person-specific directory
+        storage_dir = self.hass.config.path(f"keepassxc_otp/{person_name}")
         await self.hass.async_add_executor_job(_ensure_directory, storage_dir)
         
         if user_input is not None:
             try:
-                # Validate new input and extract OTP secrets
-                info = await validate_input(self.hass, user_input, user_id)
+                # Add person_entity_id back for validation
+                user_input["person_entity_id"] = person_entity_id
                 
-                # Update the existing config entry with new OTP secrets
-                # This will replace all old secrets with new ones
-                update_data = {
-                    CONF_OTP_SECRETS: info[CONF_OTP_SECRETS],
-                }
-                # Preserve user_id if it exists
-                if user_id:
-                    update_data["user_id"] = user_id
-                    
+                info = await validate_input(self.hass, user_input, person_name)
+                
+                # Update config entry (keep person info)
                 self.hass.config_entries.async_update_entry(
                     entry,
-                    data=update_data
+                    data={
+                        "person_entity_id": person_entity_id,
+                        "person_name": person_name,
+                        "person_id": person_id,
+                        CONF_OTP_SECRETS: info[CONF_OTP_SECRETS],
+                    }
                 )
                 
                 _LOGGER.info(
-                    "Reconfigured KeePassXC OTP for user %s with %d secrets",
-                    user_id or "shared",
+                    "Reconfigured KeePassXC OTP for person %s with %d secrets",
+                    person_name,
                     len(info[CONF_OTP_SECRETS])
                 )
                 
-                # Reload the integration to remove old entities and create new ones
                 await self.hass.config_entries.async_reload(entry.entry_id)
-                
                 return self.async_abort(reason="reconfigure_successful")
                 
             except ValueError as err:
@@ -473,13 +455,13 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                 _LOGGER.exception("Unexpected exception during reconfiguration")
                 errors["base"] = "unknown"
         
-        # Show the same form as initial setup
         return self.async_show_form(
             step_id="reconfigure",
-            data_schema=DATA_SCHEMA,
+            data_schema=RECONFIGURE_SCHEMA,
             errors=errors,
             description_placeholders={
                 "storage_path": storage_dir,
+                "person_name": person_name,
             },
         )
 
@@ -489,57 +471,77 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         """Handle the initial step."""
         errors: dict[str, str] = {}
         
-        # Get current user ID from context
-        user_id = self.context.get("user_id")
-        if not user_id:
-            _LOGGER.error("No user_id in context")
-            return self.async_abort(reason="no_user")
-        
-        # Create user-specific directory
-        storage_dir = self.hass.config.path(f"keepassxc_otp/user_{user_id}")
-        await self.hass.async_add_executor_job(_ensure_directory, storage_dir)
-
         if user_input is not None:
-            try:
-                # Pass user_id to validation
-                info = await validate_input(self.hass, user_input, user_id)
-            except ValueError as err:
-                error_str = str(err)
-                if "database_not_found" in error_str:
-                    errors["base"] = "database_not_found"
-                elif "keyfile_not_found" in error_str:
-                    errors["base"] = "keyfile_not_found"
-                elif "invalid_auth" in error_str:
-                    errors["base"] = "invalid_auth"
-                elif "cannot_connect" in error_str:
-                    errors["base"] = "cannot_connect"
-                elif "no_otp_entries" in error_str:
-                    errors["base"] = "no_otp_entries"
-                else:
-                    errors["base"] = "unknown"
-            except Exception:  # pylint: disable=broad-except
-                _LOGGER.exception("Unexpected exception")
-                errors["base"] = "unknown"
+            # Get person entity
+            person_entity_id = user_input.get("person_entity_id")
+            person_state = self.hass.states.get(person_entity_id)
+            
+            if not person_state:
+                errors["person_entity_id"] = "person_not_found"
             else:
-                # Get user info for title
-                user = await self.hass.auth.async_get_user(user_id)
-                user_name = user.name if user else f"User {user_id[:8]}"
+                # Get person name for directory
+                person_name = person_state.attributes.get("friendly_name") or person_state.name
+                person_id = person_entity_id.split(".")[1]  # Extract ID from person.alice -> alice
                 
-                # Store user_id along with OTP secrets
-                return self.async_create_entry(
-                    title=f"KeePassXC OTP ({user_name})",
-                    data={
-                        "user_id": user_id,
-                        CONF_OTP_SECRETS: info[CONF_OTP_SECRETS],
-                    },
-                )
+                # Check if this person already has an integration instance
+                existing_entries = self._async_current_entries()
+                for entry in existing_entries:
+                    if entry.data.get("person_entity_id") == person_entity_id:
+                        errors["base"] = "person_already_configured"
+                        break
+                
+                if not errors:
+                    # Create person-specific directory
+                    storage_dir = self.hass.config.path(f"keepassxc_otp/{person_name}")
+                    await self.hass.async_add_executor_job(_ensure_directory, storage_dir)
+                    
+                    try:
+                        # Pass person info to validation
+                        info = await validate_input(self.hass, user_input, person_name)
+                        
+                        # Store person entity ID along with OTP secrets
+                        return self.async_create_entry(
+                            title=f"KeePassXC OTP ({person_name})",
+                            data={
+                                "person_entity_id": person_entity_id,
+                                "person_name": person_name,
+                                "person_id": person_id,
+                                CONF_OTP_SECRETS: info[CONF_OTP_SECRETS],
+                            },
+                        )
+                    except ValueError as err:
+                        error_str = str(err)
+                        if "database_not_found" in error_str:
+                            errors["base"] = "database_not_found"
+                        elif "keyfile_not_found" in error_str:
+                            errors["base"] = "keyfile_not_found"
+                        elif "invalid_auth" in error_str:
+                            errors["base"] = "invalid_auth"
+                        elif "cannot_connect" in error_str:
+                            errors["base"] = "cannot_connect"
+                        elif "no_otp_entries" in error_str:
+                            errors["base"] = "no_otp_entries"
+                        else:
+                            errors["base"] = "unknown"
+                    except Exception:
+                        _LOGGER.exception("Unexpected exception")
+                        errors["base"] = "unknown"
 
-        # Show form with user-specific path
+        # Get description with dynamic path if person selected
+        description_placeholders = {}
+        if user_input and user_input.get("person_entity_id"):
+            person_state = self.hass.states.get(user_input["person_entity_id"])
+            if person_state:
+                person_name = person_state.attributes.get("friendly_name") or person_state.name
+                storage_dir = self.hass.config.path(f"keepassxc_otp/{person_name}")
+                description_placeholders["storage_path"] = storage_dir
+
+        # Show form with person selector
         return self.async_show_form(
             step_id="user",
-            data_schema=DATA_SCHEMA,
+            data_schema=self.add_suggested_values_to_schema(
+                DATA_SCHEMA, user_input
+            ) if user_input else DATA_SCHEMA,
             errors=errors,
-            description_placeholders={
-                "storage_path": storage_dir,
-            },
+            description_placeholders=description_placeholders,
         )

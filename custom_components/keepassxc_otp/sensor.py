@@ -27,6 +27,7 @@ from .const import (
     CONF_OTP_SECRETS,
     DOMAIN,
     UPDATE_INTERVAL,
+    sanitize_entity_name,
 )
 
 _LOGGER = logging.getLogger(__name__)
@@ -106,21 +107,18 @@ async def async_setup_entry(
 ) -> None:
     """Set up KeePassXC OTP sensors from a config entry."""
     otp_secrets = config_entry.data.get(CONF_OTP_SECRETS, {})
-    user_id = config_entry.data.get("user_id")
+    person_entity_id = config_entry.data.get("person_entity_id")
+    person_name = config_entry.data.get("person_name")
+    person_id = config_entry.data.get("person_id")
+
+    if not person_entity_id:
+        _LOGGER.error("No person_entity_id in config entry")
+        return
 
     if not otp_secrets:
-        _LOGGER.warning("No OTP secrets found in config entry")
+        _LOGGER.warning("No OTP secrets found for person %s", person_name)
         return
     
-    # Get user info if user_id is present
-    user_name = None
-    if user_id:
-        user = await hass.auth.async_get_user(user_id)
-        user_name = user.name if user else f"User_{user_id[:8]}"
-        _LOGGER.info("Setting up OTP sensors for user %s (ID: %s)", user_name, user_id)
-    else:
-        _LOGGER.info("Setting up OTP sensors (shared/legacy mode)")
-
     coordinator = KeePassXCOTPCoordinator(hass, otp_secrets)
 
     # Fetch initial data
@@ -128,13 +126,14 @@ async def async_setup_entry(
 
     # Create exactly one entity per unique UUID
     entities = [
-        KeePassXCOTPSensor(coordinator, entry_uuid, user_id, user_name)
+        KeePassXCOTPSensor(coordinator, entry_uuid, person_entity_id, person_name, person_id)
         for entry_uuid in otp_secrets.keys()
     ]
 
     _LOGGER.info(
-        "Creating %d OTP sensor entities for KeePassXC OTP integration",
-        len(entities)
+        "Creating %d OTP sensor entities for person %s",
+        len(entities),
+        person_name
     )
     async_add_entities(entities, update_before_add=True)
 
@@ -146,52 +145,38 @@ class KeePassXCOTPSensor(CoordinatorEntity, SensorEntity):
         self,
         coordinator: KeePassXCOTPCoordinator,
         entry_uuid: str,
-        user_id: str | None = None,
-        user_name: str | None = None,
+        person_entity_id: str,
+        person_name: str,
+        person_id: str,
     ) -> None:
         """Initialize the sensor."""
         super().__init__(coordinator)
         self._entry_uuid = entry_uuid
-        self._user_id = user_id
-        self._user_name = user_name
+        self._person_entity_id = person_entity_id
+        self._person_name = person_name
+        self._person_id = person_id
         
         # Get initial data from coordinator
         otp_data = coordinator.data.get(entry_uuid, {})
         
-        # Use UUID for unique_id to ensure uniqueness
-        if user_id:
-            self._attr_unique_id = f"{user_id}_{entry_uuid}"
-        else:
-            self._attr_unique_id = f"{DOMAIN}_{entry_uuid}"
+        # Create person-specific entity ID using person ID (from person.alice -> alice)
+        base_name = otp_data.get("name", "Unknown OTP Entry")
+        entity_name = sanitize_entity_name(base_name)
         
-        # Use a user-friendly fallback if name is missing
-        base_name = otp_data.get("name") or "Unknown OTP Entry"
+        self._attr_unique_id = f"{person_id}_{entry_uuid}"
+        self.entity_id = f"sensor.{DOMAIN}_{person_id}_{entity_name}"
         
-        # Include user in friendly name if available
-        if user_name:
-            self._attr_name = f"{base_name} ({user_name})"
-        else:
-            self._attr_name = base_name
+        # Include person name in friendly name
+        self._attr_name = f"{base_name} ({person_name})"
             
         self._attr_icon = "mdi:key-chain"
         
-        # Use slugified title for readable entity_id with user prefix
-        entity_id_suffix = otp_data.get("entity_id_suffix", slugify(base_name))
-        if user_name:
-            # Create user-specific entity ID
-            user_prefix = slugify(user_name)[:20]  # Limit user prefix length
-            self.entity_id = f"sensor.{DOMAIN}_{user_prefix}_{entity_id_suffix}"
-        else:
-            self.entity_id = f"sensor.{DOMAIN}_{entity_id_suffix}"
-        
-        # Log creation
-        if user_id:
-            _LOGGER.debug(
-                "Created sensor %s for user %s (ID: %s)",
-                self.entity_id,
-                user_name,
-                user_id
-            )
+        _LOGGER.debug(
+            "Created sensor %s for person %s (entity: %s)",
+            self.entity_id,
+            person_name,
+            person_entity_id
+        )
         
         # Log warning if OTP data is missing
         if not otp_data:
@@ -234,10 +219,8 @@ class KeePassXCOTPSensor(CoordinatorEntity, SensorEntity):
         if otp_data.get("account"):
             attributes[ATTR_ACCOUNT] = otp_data["account"]
         
-        # Add user information if available
-        if self._user_id:
-            attributes["user_id"] = self._user_id
-        if self._user_name:
-            attributes["user_name"] = self._user_name
+        # Add person information
+        attributes["person_entity_id"] = self._person_entity_id
+        attributes["person_name"] = self._person_name
 
         return attributes

@@ -34,27 +34,22 @@ class KeePassXCOTPCard extends HTMLElement {
     if (!this._hass) return;
     
     const entities = [];
-    const currentUserId = this._hass.user?.id;
-    const isAdmin = this._hass.user?.is_admin || false;
-    const showAllUsers = this._config.show_all_users || false;
+    const personEntityId = this._config.person_entity_id;
     
     Object.keys(this._hass.states).forEach(entity_id => {
       if (entity_id.startsWith('sensor.keepassxc_otp_')) {
         const state = this._hass.states[entity_id];
-        const entityUserId = state.attributes?.user_id;
+        const entityPersonId = state.attributes?.person_entity_id;
         
-        // Filter by current user unless admin view with show_all_users enabled
-        if (showAllUsers && isAdmin) {
-          // Admin can see all entities when show_all_users is true
-          entities.push(entity_id);
-        } else if (!entityUserId) {
-          // Legacy entities without user_id (shared mode)
-          entities.push(entity_id);
-        } else if (entityUserId === currentUserId) {
-          // User's own entities
+        // Filter by person if specified
+        if (personEntityId) {
+          if (entityPersonId === personEntityId) {
+            entities.push(entity_id);
+          }
+        } else {
+          // Show all by default
           entities.push(entity_id);
         }
-        // Otherwise, skip entity (belongs to another user)
       }
     });
     

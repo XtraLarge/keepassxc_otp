@@ -16,60 +16,61 @@ A Home Assistant custom integration that reads OTP/TOTP entries from a KeePassXC
 - 🧹 **Auto-cleanup** - removes old sensors before each sync
 - 🌍 **Multi-language** - English and German translations
 - 🎨 **Home Assistant UI** - easy configuration through the UI
-- 👥 **Multi-user support** - each Home Assistant user can have their own OTP database
+- 👥 **Person-based OTP management** - each person can have their own OTP database
 
-### Multi-User Support
+### Person-Based OTP Management
 
-Each Home Assistant user can configure their own KeePassXC database with separate OTP entries:
+Each person in your Home Assistant setup can have their own KeePassXC database with separate OTP entries:
 
 #### How It Works
 
-- **User-Specific Directories**: Each user gets their own directory: `/config/keepassxc_otp/user_<user_id>/`
-- **Separate OTP Entries**: Users only see their own OTP tokens
-- **User-Prefixed Entity IDs**: Entities are named with user prefix for easy identification
-  - Example: `sensor.keepassxc_otp_alice_gmail` (Alice's Gmail OTP)
-  - Example: `sensor.keepassxc_otp_bob_github` (Bob's GitHub OTP)
-- **Privacy & Security**: Users cannot access other users' OTP tokens
-- **Admin View**: Administrators can optionally view all users' tokens in the Lovelace card
+- **Person-Specific Directories**: Each person gets their own directory with a friendly name: `/config/keepassxc_otp/<PersonName>/`
+  - Example: `/config/keepassxc_otp/Alice/` for person.alice
+  - Example: `/config/keepassxc_otp/Bob/` for person.bob
+- **Separate OTP Entries**: Each person's OTP tokens are isolated
+- **Person-Based Entity IDs**: Entities use person ID for identification
+  - Example: `sensor.keepassxc_otp_alice_gmail` (Alice's Gmail OTP from person.alice)
+  - Example: `sensor.keepassxc_otp_bob_github` (Bob's GitHub OTP from person.bob)
+- **Privacy & Security**: OTP tokens are organized by person entity
+- **One Integration Per Person**: Each person can configure one integration instance
 
-#### Setup for Each User
+#### Setup for Each Person
 
-1. **Log in as your user** in Home Assistant
-2. **Add the integration** (Settings → Integrations → Add → KeePassXC OTP)
-3. **Place your database** in `/config/keepassxc_otp/user_<your_user_id>/`
+1. **Add the integration** (Settings → Integrations → Add → KeePassXC OTP)
+2. **Select a person** from the dropdown (person.alice, person.bob, etc.)
+3. **Place your database** in `/config/keepassxc_otp/<PersonName>/`
+   - The directory uses the person's friendly name (e.g., "Alice", "Bob")
    - The directory will be created automatically when you add the integration
-   - Each user has their own isolated directory
+   - Each person has their own isolated directory
 4. **Configure your database** with your password and optional keyfile
 
 #### Entity Naming
 
-Entities include your username for easy identification:
+Entities are identified by the person ID (extracted from the person entity):
 - Friendly name: `Gmail (Alice)`, `GitHub (Bob)`
-- Entity ID: `sensor.keepassxc_otp_alice_gmail`, `sensor.keepassxc_otp_bob_github`
-- Attributes include `user_id` and `user_name` for filtering and permissions
+- Entity ID: `sensor.keepassxc_otp_alice_gmail` (from person.alice)
+- Entity ID: `sensor.keepassxc_otp_bob_github` (from person.bob)
+- Attributes include `person_entity_id` and `person_name` for filtering
 
 #### Lovelace Card Filtering
 
-The custom Lovelace card automatically filters entities:
-- **Users** see only their own OTP tokens
-- **Admins** can see all tokens by setting `show_all_users: true`
+The custom Lovelace card can filter entities by person:
 
 ```yaml
-# Regular user view (sees only own tokens)
+# Alice's OTP tokens only
 type: custom:keepassxc-otp-card
-title: 🔐 My OTP Tokens
+title: 🔐 Alice's OTP Tokens
+person_entity_id: person.alice
 
-# Admin view (sees all users' tokens)
+# Bob's OTP tokens only
+type: custom:keepassxc-otp-card
+title: 🔐 Bob's OTP Tokens
+person_entity_id: person.bob
+
+# All OTP tokens (no filter)
 type: custom:keepassxc-otp-card
 title: 🔐 All OTP Tokens
-show_all_users: true
 ```
-
-#### Permission Validation
-
-- Config flow validates user ownership during setup and reconfiguration
-- Copy service logs attempts to access other users' tokens
-- Admins can manage all integrations, regular users can only manage their own
 
 ### Installation
 
@@ -104,14 +105,15 @@ For backward compatibility, you can still use the shared directory:
    - Your KeePassXC database file (e.g., `database.kdbx`)
    - Your keyfile (optional, e.g., `keyfile.key`)
 
-#### Multi-User Mode (Recommended)
+#### Person-Based Mode (Recommended)
 
-For user-specific OTP management:
+For person-specific OTP management:
 
-1. **Log in as your user** in Home Assistant
-2. **Add the integration** (Settings → Devices & Services → Add Integration → KeePassXC OTP)
-3. **Copy your files** to the user-specific directory shown in the configuration form:
-   - The directory will be `/config/keepassxc_otp/user_<your_user_id>/`
+1. **Add the integration** (Settings → Devices & Services → Add Integration → KeePassXC OTP)
+2. **Select a person** from the person selector dropdown (e.g., person.alice, person.bob)
+3. **Copy your files** to the person-specific directory shown in the configuration form:
+   - The directory will be `/config/keepassxc_otp/<PersonName>/` (using the person's friendly name)
+   - Example: `/config/keepassxc_otp/Alice/` for person.alice
    - This directory is automatically created when you start the configuration
 
    You can copy files via:
@@ -132,7 +134,7 @@ For user-specific OTP management:
 
 ⚠️ **Important:** Files in the storage directory will be permanently deleted after successful import!
 
-**Note:** In multi-user mode, the configuration form shows the exact path where you should place your files.
+**Note:** Each person can have ONE integration instance. The configuration form shows the exact path where you should place your files.
 
 The integration will:
 - Validate your credentials
@@ -187,7 +189,7 @@ Entry: "GitHub"
   - otp: otpauth://totp/GitHub:user@example.com?secret=JBSWY3DPEHPK3PXP&issuer=GitHub
 ```
 
-This creates sensor: `sensor.keepassxc_otp_github`
+This creates sensor: `sensor.keepassxc_otp_<person_id>_github` (e.g., `sensor.keepassxc_otp_alice_github` for person.alice)
 
 #### Sensor Attributes
 
@@ -208,9 +210,9 @@ Each sensor provides:
 type: entities
 title: OTP Codes
 entities:
-  - entity: sensor.keepassxc_otp_github
+  - entity: sensor.keepassxc_otp_alice_github
     secondary_info: attribute:time_remaining
-  - entity: sensor.keepassxc_otp_google
+  - entity: sensor.keepassxc_otp_alice_google
     secondary_info: attribute:time_remaining
 ```
 
@@ -221,11 +223,11 @@ automation:
   - alias: "Notify when OTP code changes"
     trigger:
       - platform: state
-        entity_id: sensor.keepassxc_otp_github
+        entity_id: sensor.keepassxc_otp_alice_github
     action:
       - service: notify.mobile_app
         data:
-          message: "New GitHub OTP: {{ states('sensor.keepassxc_otp_github') }}"
+          message: "New GitHub OTP: {{ states('sensor.keepassxc_otp_alice_github') }}"
 ```
 
 ## Lovelace Card
@@ -250,7 +252,8 @@ Add to your Lovelace dashboard:
 
 ```yaml
 type: custom:keepassxc-otp-card
-title: 🔐 My OTP Tokens
+title: 🔐 Alice's OTP Tokens
+person_entity_id: person.alice
 show_gauge: true
 show_copy_button: true
 ```
@@ -260,6 +263,7 @@ show_copy_button: true
 | Option | Type | Default | Description |
 |--------|------|---------|-------------|
 | `title` | string | `🔐 KeePassXC OTP` | Card title |
+| `person_entity_id` | string | `none` | Filter tokens by person (e.g., `person.alice`) |
 | `show_gauge` | boolean | `true` | Show time remaining gauge |
 | `show_copy_button` | boolean | `true` | Show copy button |
 | `layout` | string | `auto` | Layout mode |
@@ -273,7 +277,7 @@ Copy an OTP token to clipboard.
 ```yaml
 service: keepassxc_otp.copy_token
 data:
-  entity_id: sensor.keepassxc_otp_gmail
+  entity_id: sensor.keepassxc_otp_alice_gmail
 ```
 
 #### `keepassxc_otp.get_all_entities`
@@ -362,60 +366,61 @@ Eine Home Assistant Custom Integration, die OTP/TOTP-Einträge aus einer KeePass
 - 🧹 **Auto-Cleanup** - entfernt alte Sensoren vor jeder Synchronisierung
 - 🌍 **Mehrsprachig** - Englische und deutsche Übersetzungen
 - 🎨 **Home Assistant UI** - einfache Konfiguration über die Benutzeroberfläche
-- 👥 **Mehrbenutzer-Unterstützung** - jeder Home Assistant Benutzer kann seine eigene OTP-Datenbank haben
+- 👥 **Personenbasierte OTP-Verwaltung** - jede Person kann ihre eigene OTP-Datenbank haben
 
-### Mehrbenutzer-Unterstützung
+### Personenbasierte OTP-Verwaltung
 
-Jeder Home Assistant Benutzer kann seine eigene KeePassXC-Datenbank mit separaten OTP-Einträgen konfigurieren:
+Jede Person in Ihrem Home Assistant Setup kann ihre eigene KeePassXC-Datenbank mit separaten OTP-Einträgen haben:
 
 #### Funktionsweise
 
-- **Benutzerspezifische Verzeichnisse**: Jeder Benutzer erhält sein eigenes Verzeichnis: `/config/keepassxc_otp/user_<benutzer_id>/`
-- **Getrennte OTP-Einträge**: Benutzer sehen nur ihre eigenen OTP-Token
-- **Benutzerpräfix in Entitäts-IDs**: Entitäten werden mit Benutzerpräfix benannt zur einfachen Identifizierung
-  - Beispiel: `sensor.keepassxc_otp_alice_gmail` (Alices Gmail OTP)
-  - Beispiel: `sensor.keepassxc_otp_bob_github` (Bobs GitHub OTP)
-- **Datenschutz & Sicherheit**: Benutzer können nicht auf OTP-Token anderer Benutzer zugreifen
-- **Admin-Ansicht**: Administratoren können optional alle Benutzer-Token in der Lovelace-Karte anzeigen
+- **Personenspezifische Verzeichnisse**: Jede Person erhält ihr eigenes Verzeichnis mit einem freundlichen Namen: `/config/keepassxc_otp/<PersonName>/`
+  - Beispiel: `/config/keepassxc_otp/Alice/` für person.alice
+  - Beispiel: `/config/keepassxc_otp/Bob/` für person.bob
+- **Getrennte OTP-Einträge**: Die OTP-Token jeder Person sind isoliert
+- **Personenbasierte Entitäts-IDs**: Entitäten verwenden Personen-ID zur Identifizierung
+  - Beispiel: `sensor.keepassxc_otp_alice_gmail` (Alices Gmail OTP von person.alice)
+  - Beispiel: `sensor.keepassxc_otp_bob_github` (Bobs GitHub OTP von person.bob)
+- **Datenschutz & Sicherheit**: OTP-Token sind nach Personen-Entität organisiert
+- **Eine Integration pro Person**: Jede Person kann eine Integrationsinstanz konfigurieren
 
-#### Einrichtung für jeden Benutzer
+#### Einrichtung für jede Person
 
-1. **Melden Sie sich als Ihr Benutzer** in Home Assistant an
-2. **Fügen Sie die Integration hinzu** (Einstellungen → Integrationen → Hinzufügen → KeePassXC OTP)
-3. **Platzieren Sie Ihre Datenbank** in `/config/keepassxc_otp/user_<ihre_benutzer_id>/`
+1. **Fügen Sie die Integration hinzu** (Einstellungen → Integrationen → Hinzufügen → KeePassXC OTP)
+2. **Wählen Sie eine Person** aus dem Dropdown (person.alice, person.bob, usw.)
+3. **Platzieren Sie Ihre Datenbank** in `/config/keepassxc_otp/<PersonName>/`
+   - Das Verzeichnis verwendet den freundlichen Namen der Person (z.B. "Alice", "Bob")
    - Das Verzeichnis wird automatisch erstellt, wenn Sie die Integration hinzufügen
-   - Jeder Benutzer hat sein eigenes isoliertes Verzeichnis
+   - Jede Person hat ihr eigenes isoliertes Verzeichnis
 4. **Konfigurieren Sie Ihre Datenbank** mit Ihrem Passwort und optionaler Schlüsseldatei
 
 #### Entitätsbenennung
 
-Entitäten enthalten Ihren Benutzernamen zur einfachen Identifizierung:
+Entitäten werden durch die Personen-ID identifiziert (extrahiert aus der Personen-Entität):
 - Anzeigename: `Gmail (Alice)`, `GitHub (Bob)`
-- Entitäts-ID: `sensor.keepassxc_otp_alice_gmail`, `sensor.keepassxc_otp_bob_github`
-- Attribute enthalten `user_id` und `user_name` für Filterung und Berechtigungen
+- Entitäts-ID: `sensor.keepassxc_otp_alice_gmail` (von person.alice)
+- Entitäts-ID: `sensor.keepassxc_otp_bob_github` (von person.bob)
+- Attribute enthalten `person_entity_id` und `person_name` für Filterung
 
 #### Lovelace-Karten-Filterung
 
-Die benutzerdefinierte Lovelace-Karte filtert Entitäten automatisch:
-- **Benutzer** sehen nur ihre eigenen OTP-Token
-- **Admins** können alle Token sehen durch `show_all_users: true`
+Die benutzerdefinierte Lovelace-Karte kann Entitäten nach Person filtern:
 
 ```yaml
-# Normale Benutzeransicht (sieht nur eigene Token)
+# Nur Alices OTP-Token
 type: custom:keepassxc-otp-card
-title: 🔐 Meine OTP-Token
+title: 🔐 Alices OTP-Token
+person_entity_id: person.alice
 
-# Admin-Ansicht (sieht alle Benutzer-Token)
+# Nur Bobs OTP-Token
+type: custom:keepassxc-otp-card
+title: 🔐 Bobs OTP-Token
+person_entity_id: person.bob
+
+# Alle OTP-Token (kein Filter)
 type: custom:keepassxc-otp-card
 title: 🔐 Alle OTP-Token
-show_all_users: true
 ```
-
-#### Berechtigungsvalidierung
-
-- Konfigurationsablauf validiert Benutzerbesitz während Einrichtung und Neukonfiguration
-- Kopierdienst protokolliert Versuche auf Token anderer Benutzer zuzugreifen
-- Admins können alle Integrationen verwalten, normale Benutzer nur ihre eigenen
 
 ### Installation
 
@@ -450,14 +455,15 @@ Für Rückwärtskompatibilität können Sie weiterhin das geteilte Verzeichnis v
    - Ihre KeePassXC-Datenbankdatei (z.B. `database.kdbx`)
    - Ihre Schlüsseldatei (optional, z.B. `keyfile.key`)
 
-#### Mehrbenutzer-Modus (Empfohlen)
+#### Personenbasierter Modus (Empfohlen)
 
-Für benutzerspezifische OTP-Verwaltung:
+Für personenspezifische OTP-Verwaltung:
 
-1. **Melden Sie sich als Ihr Benutzer** in Home Assistant an
-2. **Fügen Sie die Integration hinzu** (Einstellungen → Geräte & Dienste → Integration hinzufügen → KeePassXC OTP)
-3. **Kopieren Sie Ihre Dateien** in das benutzerspezifische Verzeichnis, das im Konfigurationsformular angezeigt wird:
-   - Das Verzeichnis wird `/config/keepassxc_otp/user_<ihre_benutzer_id>/` sein
+1. **Fügen Sie die Integration hinzu** (Einstellungen → Geräte & Dienste → Integration hinzufügen → KeePassXC OTP)
+2. **Wählen Sie eine Person** aus dem Personen-Auswahl-Dropdown (z.B. person.alice, person.bob)
+3. **Kopieren Sie Ihre Dateien** in das personenspezifische Verzeichnis, das im Konfigurationsformular angezeigt wird:
+   - Das Verzeichnis wird `/config/keepassxc_otp/<PersonName>/` sein (mit dem freundlichen Namen der Person)
+   - Beispiel: `/config/keepassxc_otp/Alice/` für person.alice
    - Dieses Verzeichnis wird automatisch erstellt, wenn Sie die Konfiguration starten
 
    Sie können Dateien kopieren über:
@@ -478,7 +484,7 @@ Für benutzerspezifische OTP-Verwaltung:
 
 ⚠️ **Wichtig:** Dateien im Speicherverzeichnis werden nach erfolgreichem Import dauerhaft gelöscht!
 
-**Hinweis:** Im Mehrbenutzer-Modus zeigt das Konfigurationsformular den genauen Pfad, wo Sie Ihre Dateien platzieren sollten.
+**Hinweis:** Jede Person kann EINE Integrationsinstanz haben. Das Konfigurationsformular zeigt den genauen Pfad, wo Sie Ihre Dateien platzieren sollten.
 
 Die Integration wird:
 - Ihre Anmeldeinformationen validieren
@@ -533,7 +539,7 @@ Eintrag: "GitHub"
   - otp: otpauth://totp/GitHub:user@example.com?secret=JBSWY3DPEHPK3PXP&issuer=GitHub
 ```
 
-Dies erstellt Sensor: `sensor.keepassxc_otp_github`
+Dies erstellt Sensor: `sensor.keepassxc_otp_<personen_id>_github` (z.B. `sensor.keepassxc_otp_alice_github` für person.alice)
 
 #### Sensor-Attribute
 
@@ -554,9 +560,9 @@ Jeder Sensor bietet:
 type: entities
 title: OTP-Codes
 entities:
-  - entity: sensor.keepassxc_otp_github
+  - entity: sensor.keepassxc_otp_alice_github
     secondary_info: attribute:time_remaining
-  - entity: sensor.keepassxc_otp_google
+  - entity: sensor.keepassxc_otp_alice_google
     secondary_info: attribute:time_remaining
 ```
 
@@ -567,11 +573,11 @@ automation:
   - alias: "Benachrichtigen wenn OTP-Code sich ändert"
     trigger:
       - platform: state
-        entity_id: sensor.keepassxc_otp_github
+        entity_id: sensor.keepassxc_otp_alice_github
     action:
       - service: notify.mobile_app
         data:
-          message: "Neuer GitHub OTP: {{ states('sensor.keepassxc_otp_github') }}"
+          message: "Neuer GitHub OTP: {{ states('sensor.keepassxc_otp_alice_github') }}"
 ```
 
 ## Lovelace-Karte
@@ -596,7 +602,8 @@ Fügen Sie dies zu Ihrem Lovelace-Dashboard hinzu:
 
 ```yaml
 type: custom:keepassxc-otp-card
-title: 🔐 Meine OTP-Token
+title: 🔐 Alices OTP-Token
+person_entity_id: person.alice
 show_gauge: true
 show_copy_button: true
 ```
@@ -606,6 +613,7 @@ show_copy_button: true
 | Option | Typ | Standard | Beschreibung |
 |--------|-----|----------|--------------|
 | `title` | string | `🔐 KeePassXC OTP` | Kartentitel |
+| `person_entity_id` | string | `keine` | Token nach Person filtern (z.B. `person.alice`) |
 | `show_gauge` | boolean | `true` | Verbleibende Zeit-Anzeige anzeigen |
 | `show_copy_button` | boolean | `true` | Kopierschaltfläche anzeigen |
 | `layout` | string | `auto` | Layout-Modus |
@@ -619,7 +627,7 @@ Ein OTP-Token in die Zwischenablage kopieren.
 ```yaml
 service: keepassxc_otp.copy_token
 data:
-  entity_id: sensor.keepassxc_otp_gmail
+  entity_id: sensor.keepassxc_otp_alice_gmail
 ```
 
 #### `keepassxc_otp.get_all_entities`

@@ -48,10 +48,12 @@ Each person in your Home Assistant setup can have their own KeePassXC database w
 #### Entity Naming
 
 Entities are identified by the person ID (extracted from the person entity):
-- Friendly name: `Gmail (Alice)`, `GitHub (Bob)`
+- Friendly name: `KeePassXC OTP: Gmail`, `KeePassXC OTP: GitHub`
 - Entity ID: `sensor.keepassxc_otp_alice_gmail` (from person.alice)
 - Entity ID: `sensor.keepassxc_otp_bob_github` (from person.bob)
 - Attributes include `person_entity_id` and `person_name` for filtering
+
+The person context is available via the `person_entity_id` and `person_name` attributes, and can be displayed in the card header.
 
 #### Lovelace Card Filtering
 
@@ -206,8 +208,11 @@ Each sensor provides:
   - `entry_name`: Entry title from KeePassXC
   - `issuer`: Service name (e.g., "GitHub")
   - `account`: Account identifier (e.g., email)
+  - `url`: Service URL (if available) (e.g., "https://github.com/login")
   - `time_remaining`: Seconds until code expires
   - `period`: TOTP refresh period (usually 30 seconds)
+  - `person_entity_id`: Associated person entity (e.g., "person.alice")
+  - `person_name`: Person's friendly name (e.g., "Alice")
 
 ### Usage Examples
 
@@ -405,10 +410,12 @@ Jede Person in Ihrem Home Assistant Setup kann ihre eigene KeePassXC-Datenbank m
 #### Entitätsbenennung
 
 Entitäten werden durch die Personen-ID identifiziert (extrahiert aus der Personen-Entität):
-- Anzeigename: `Gmail (Alice)`, `GitHub (Bob)`
+- Anzeigename: `KeePassXC OTP: Gmail`, `KeePassXC OTP: GitHub`
 - Entitäts-ID: `sensor.keepassxc_otp_alice_gmail` (von person.alice)
 - Entitäts-ID: `sensor.keepassxc_otp_bob_github` (von person.bob)
 - Attribute enthalten `person_entity_id` und `person_name` für Filterung
+
+Der Personenkontext ist über die Attribute `person_entity_id` und `person_name` verfügbar und kann im Kartenkopf angezeigt werden.
 
 #### Lovelace-Karten-Filterung
 
@@ -563,8 +570,11 @@ Jeder Sensor bietet:
   - `entry_name`: Eintragstitel aus KeePassXC
   - `issuer`: Dienstname (z.B. "GitHub")
   - `account`: Konto-Kennung (z.B. E-Mail)
+  - `url`: Dienst-URL (falls verfügbar) (z.B. "https://github.com/login")
   - `time_remaining`: Sekunden bis zum Ablauf des Codes
   - `period`: TOTP-Aktualisierungsperiode (normalerweise 30 Sekunden)
+  - `person_entity_id`: Zugeordnete Personen-Entität (z.B. "person.alice")
+  - `person_name`: Anzeigename der Person (z.B. "Alice")
 
 ### Verwendungsbeispiele
 

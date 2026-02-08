@@ -146,7 +146,21 @@ def _extract_otp_from_entry(entry) -> dict[str, Any] | None:
         _LOGGER.debug("Entry %s has OTP data but not in URI format", entry.title)
         return None
 
-    return _parse_otpauth_uri(otp_uri, entry.title)
+    otp_data = _parse_otpauth_uri(otp_uri, entry.title)
+    if not otp_data:
+        return None
+    
+    # Extract URL from entry (if available)
+    entry_url = None
+    if hasattr(entry, 'url') and entry.url:
+        # Only include if not a reference
+        if "{REF:" not in str(entry.url).upper():
+            entry_url = entry.url
+    
+    # Add URL to OTP data
+    otp_data["url"] = entry_url
+    
+    return otp_data
 
 
 def _get_person_info(person_state) -> tuple[str, str]:
@@ -364,6 +378,7 @@ async def validate_input(hass: HomeAssistant, data: dict[str, Any], person_name:
                     "period": otp_data.get("period", 30),
                     "digits": otp_data.get("digits", 6),
                     "algorithm": otp_data.get("algorithm", "SHA1"),
+                    "url": otp_data.get("url"),
                 }
                 _LOGGER.debug(
                     "Extracted OTP for entry: %s (UUID: %s)",

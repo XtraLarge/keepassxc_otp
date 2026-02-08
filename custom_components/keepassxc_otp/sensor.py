@@ -88,6 +88,7 @@ class KeePassXCOTPCoordinator(DataUpdateCoordinator):
                     "issuer": secret_data.get("issuer"),
                     "account": secret_data.get("account"),
                     "url": secret_data.get("url"),
+                    "username": secret_data.get("username"),
                     "period": period,
                     "digits": secret_data.get("digits", 6),
                     "time_remaining": time_remaining,
@@ -223,6 +224,10 @@ class KeePassXCOTPSensor(CoordinatorEntity, SensorEntity):
         # Add URL if available
         if otp_data.get("url"):
             attributes["url"] = otp_data["url"]
+        
+        # Add username if available
+        if otp_data.get("username"):
+            attributes["username"] = otp_data["username"]
         
         # Add person information
         attributes["person_entity_id"] = self._person_entity_id

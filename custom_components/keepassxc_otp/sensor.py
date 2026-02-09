@@ -3,7 +3,6 @@ from __future__ import annotations
 
 import hashlib
 import logging
-import time
 from typing import Any
 
 import pyotp
@@ -23,7 +22,6 @@ from .const import (
     ATTR_ENTRY_NAME,
     ATTR_ISSUER,
     ATTR_PERIOD,
-    ATTR_TIME_REMAINING,
     CONF_OTP_SECRETS,
     DOMAIN,
     UPDATE_INTERVAL,
@@ -80,7 +78,6 @@ class KeePassXCOTPCoordinator(DataUpdateCoordinator):
 
                 current_code = totp.now()
                 period = secret_data.get("period", 30)
-                time_remaining = period - (int(time.time()) % period)
 
                 otp_data[entry_uuid] = {
                     "code": current_code,
@@ -91,7 +88,6 @@ class KeePassXCOTPCoordinator(DataUpdateCoordinator):
                     "username": secret_data.get("username"),
                     "period": period,
                     "digits": secret_data.get("digits", 6),
-                    "time_remaining": time_remaining,
                     "entity_id_suffix": slugify(secret_data["name"]),
                 }
             except Exception as err:
@@ -211,7 +207,6 @@ class KeePassXCOTPSensor(CoordinatorEntity, SensorEntity):
 
         attributes = {
             ATTR_ENTRY_NAME: otp_data.get("name"),
-            ATTR_TIME_REMAINING: otp_data.get("time_remaining", 0),
             ATTR_PERIOD: otp_data.get("period", 30),
         }
 

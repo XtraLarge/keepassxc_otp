@@ -11,8 +11,8 @@ CONF_KEYFILE_FILE = "keyfile_file"
 CONF_OTP_SECRETS = "otp_secrets"
 CONF_IMPORT_STATS = "import_stats"
 
-# Update interval
-UPDATE_INTERVAL = timedelta(seconds=10)
+# Update interval - reduced from 10s to 30s to minimize system load
+UPDATE_INTERVAL = timedelta(seconds=30)
 
 # Default values
 DEFAULT_NAME = "KeePassXC OTP"

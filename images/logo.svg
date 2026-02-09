@@ -1,0 +1,33 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+  <defs>
+    <linearGradient id="grad1" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#4CAF50;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#2196F3;stop-opacity:1" />
+    </linearGradient>
+  </defs>
+  
+  <!-- Background Circle -->
+  <circle cx="256" cy="256" r="240" fill="url(#grad1)" opacity="0.1"/>
+  
+  <!-- Key Body (Safe/Lock) -->
+  <rect x="160" y="180" width="192" height="152" rx="20" fill="url(#grad1)"/>
+  
+  <!-- Keyhole -->
+  <circle cx="256" cy="240" r="30" fill="white" opacity="0.3"/>
+  <rect x="241" y="240" width="30" height="60" rx="8" fill="white" opacity="0.3"/>
+  
+  <!-- OTP Code Display -->
+  <rect x="180" y="340" width="152" height="50" rx="10" fill="white" opacity="0.9"/>
+  
+  <!-- Six dots representing OTP digits -->
+  <circle cx="200" cy="365" r="6" fill="#4CAF50"/>
+  <circle cx="230" cy="365" r="6" fill="#4CAF50"/>
+  <circle cx="260" cy="365" r="6" fill="#4CAF50"/>
+  <circle cx="290" cy="365" r="6" fill="#4CAF50"/>
+  <circle cx="320" cy="365" r="6" fill="#4CAF50"/>
+  
+  <!-- Timer Arc (showing time remaining) -->
+  <path d="M 256 100 A 80 80 0 0 1 336 180" 
+        stroke="#2196F3" stroke-width="8" fill="none" 
+        stroke-linecap="round" opacity="0.8"/>
+</svg>

@@ -1,5 +1,9 @@
 # KeePassXC OTP Integration for Home Assistant
 
+<p align="center">
+  <img src="images/logo.png" alt="KeePassXC OTP Logo" width="256">
+</p>
+
 [English](#english) | [Deutsch](#deutsch)
 
 ---

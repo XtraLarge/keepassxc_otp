@@ -19,7 +19,7 @@
   <!-- OTP Code Display -->
   <rect x="180" y="340" width="152" height="50" rx="10" fill="white" opacity="0.9"/>
   
-  <!-- Six dots representing OTP digits -->
+  <!-- Five dots representing OTP digits -->
   <circle cx="200" cy="365" r="6" fill="#4CAF50"/>
   <circle cx="230" cy="365" r="6" fill="#4CAF50"/>
   <circle cx="260" cy="365" r="6" fill="#4CAF50"/>
